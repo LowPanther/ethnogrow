@@ -105,7 +105,7 @@ function OpenTextVis({ values, naCount }: { values: string[]; naCount: number })
                 style={{
                   backgroundColor: `rgba(74, 124, 111, ${0.08 + intensity * 0.18})`,
                   borderColor: `rgba(74, 124, 111, ${0.15 + intensity * 0.25})`,
-                  color: intensity > 0.5 ? '#2D5C52' : '#4A7C6F',
+                  color: intensity > 0.5 ? '#067cc6' : '#089bf7',
                   fontWeight: intensity > 0.6 ? 500 : 400,
                 }}
               >
@@ -152,7 +152,7 @@ function MultipleChoiceVis({
                 className="h-full rounded-full"
                 style={{
                   width: `${pct}%`,
-                  backgroundColor: '#4A7C6F',
+                  backgroundColor: '#089bf7',
                   transition: 'width 0.5s ease',
                   minWidth: count > 0 ? '4px' : '0',
                 }}
@@ -203,7 +203,7 @@ function ScaleVis({
                 className="w-full rounded-t"
                 style={{
                   height: `${height}px`,
-                  backgroundColor: isAboveAvg ? '#4A7C6F' : '#E8F2F0',
+                  backgroundColor: isAboveAvg ? '#089bf7' : '#e6f5fe',
                   opacity: count === 0 ? 0.3 : 1,
                   transition: 'height 0.5s ease',
                 }}
