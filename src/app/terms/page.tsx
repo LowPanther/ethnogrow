@@ -1,0 +1,123 @@
+import Link from 'next/link'
+import { Layers } from 'lucide-react'
+import { Footer } from '@/components/Footer'
+
+export const metadata = { title: 'Terms of Use' }
+
+export default function TermsPage() {
+  return (
+    <div className="min-h-screen bg-paper flex flex-col">
+      <div className="flex-1">
+        {/* Nav */}
+        <nav className="border-b border-paper-border">
+          <div className="max-w-7xl mx-auto px-8 h-14 flex items-center justify-between">
+            <Link href="/" className="flex items-center gap-2">
+              <div className="w-7 h-7 bg-ink rounded flex items-center justify-center">
+                <Layers size={14} className="text-white" />
+              </div>
+              <span className="font-display font-semibold text-ink text-sm tracking-tight">Ethnogrow</span>
+            </Link>
+            <Link href="/login" className="text-sm text-ink-muted hover:text-ink transition-colors">
+              Sign in
+            </Link>
+          </div>
+        </nav>
+
+        <main className="max-w-3xl mx-auto px-8 py-12">
+          <div className="mb-10">
+            <h1 className="font-display font-semibold text-ink text-3xl mb-3">Terms of Use</h1>
+            <p className="text-ink-muted text-sm">Last updated: {new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+          </div>
+
+          <div className="space-y-8">
+
+            <Section title="1. Acceptance of terms">
+              <p>By accessing or using Ethnogrow ("the service"), you agree to be bound by these Terms of Use. If you do not agree, do not use the service. These terms apply to all users, including researchers and study participants.</p>
+            </Section>
+
+            <Section title="2. Description of service">
+              <p>Ethnogrow is an AI-powered qualitative research platform that allows researchers to build questionnaires, collect responses from participants, and generate AI-powered analysis reports. The service is provided on a subscription basis with usage-based add-ons.</p>
+            </Section>
+
+            <Section title="3. Account registration">
+              <ul>
+                <li>You must provide accurate and complete information when creating an account.</li>
+                <li>You are responsible for maintaining the security of your account and password.</li>
+                <li>You must be at least 18 years old to create an account.</li>
+                <li>One person or entity may not maintain more than one free account.</li>
+              </ul>
+            </Section>
+
+            <Section title="4. Acceptable use">
+              <p>You agree not to use Ethnogrow to:</p>
+              <ul>
+                <li>Conduct research that is deceptive, harmful, or unethical</li>
+                <li>Collect sensitive personal information from participants without appropriate consent</li>
+                <li>Violate any applicable laws or regulations</li>
+                <li>Infringe on the intellectual property rights of others</li>
+                <li>Distribute malware or engage in any activity that disrupts the service</li>
+                <li>Resell or commercialise access to the service without our written consent</li>
+              </ul>
+            </Section>
+
+            <Section title="5. Research ethics">
+              <p>You are solely responsible for ensuring your research complies with applicable ethical standards and regulations, including obtaining informed consent from participants where required. Ethnogrow does not review or approve research designs and is not responsible for the ethical conduct of your studies.</p>
+            </Section>
+
+            <Section title="6. Data ownership">
+              <p>You retain ownership of all questionnaires, response data, and reports created through your account. By using the service, you grant Ethnogrow a limited licence to process your data for the purpose of providing the service. We do not use your data for any other purpose.</p>
+            </Section>
+
+            <Section title="7. AI-generated content">
+              <p>AI-generated reports and analysis are provided as research aids only. They are not a substitute for professional research expertise. Ethnogrow makes no warranty as to the accuracy, completeness, or fitness for purpose of AI-generated content. You are responsible for reviewing and verifying all AI output before relying on it.</p>
+            </Section>
+
+            <Section title="8. Payments and refunds">
+              <p>Subscription fees are billed monthly in advance. Token add-ons are charged at the time of purchase. All fees are non-refundable except where required by law. We reserve the right to change pricing with 30 days notice to existing subscribers.</p>
+            </Section>
+
+            <Section title="9. Service availability">
+              <p>We aim to provide a reliable service but do not guarantee 100% uptime. We may perform maintenance that temporarily affects availability and will provide reasonable notice where possible. We are not liable for any loss resulting from service downtime.</p>
+            </Section>
+
+            <Section title="10. Termination">
+              <p>You may cancel your account at any time from your account settings. We reserve the right to suspend or terminate accounts that violate these terms. Upon termination, your data will be retained for 30 days before permanent deletion, during which time you may request an export.</p>
+            </Section>
+
+            <Section title="11. Limitation of liability">
+              <p>To the maximum extent permitted by law, Ethnogrow is not liable for any indirect, incidental, special, or consequential damages arising from your use of the service. Our total liability for any claim arising from these terms shall not exceed the amount you paid us in the 12 months preceding the claim.</p>
+            </Section>
+
+            <Section title="12. Changes to terms">
+              <p>We may update these Terms of Use from time to time. We will notify you of significant changes by email. Continued use of the service after changes constitutes acceptance of the updated terms.</p>
+            </Section>
+
+            <Section title="13. Governing law">
+              <p>These terms are governed by the laws of South Africa. Any disputes shall be subject to the jurisdiction of the South African courts.</p>
+            </Section>
+
+            <Section title="14. Contact">
+              <p>For questions about these terms, contact us at <a href="mailto:hello@ethnogrow.com" className="text-ink font-medium hover:underline">hello@ethnogrow.com</a>.</p>
+            </Section>
+
+            <div className="pt-6 border-t border-paper-border">
+              <p className="text-sm text-ink-faint italic">This is a placeholder terms of use document. Ethnogrow recommends having this document reviewed by a qualified legal professional before accepting paying customers.</p>
+            </div>
+          </div>
+        </main>
+      </div>
+      <Footer />
+    </div>
+  )
+}
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-3">
+      <h2 className="font-display font-semibold text-ink text-lg">{title}</h2>
+      <div className="text-ink-muted leading-relaxed space-y-3 [&_ul]:space-y-2 [&_ul]:list-disc [&_ul]:pl-6 [&_li]:leading-relaxed">
+        {children}
+      </div>
+    </div>
+  )
+}
