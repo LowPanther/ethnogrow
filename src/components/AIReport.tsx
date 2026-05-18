@@ -4,7 +4,8 @@ import { useState } from 'react'
 import { FollowUpSuggestions } from './FollowUpSuggestions'
 import { Question } from '@/types'
 import { clsx } from 'clsx'
-import { Sparkles, RefreshCw, AlertCircle, TrendingUp, Quote, Lightbulb, BarChart2, ChevronDown, ChevronUp } from 'lucide-react'
+import { Sparkles, RefreshCw, AlertCircle, TrendingUp, Quote, Lightbulb, BarChart2, ChevronDown, ChevronUp, Download } from 'lucide-react'
+import { exportReportPDF, exportReportCSV } from '@/lib/exportUtils'
 
 interface QuestionInsight {
   question: string
@@ -44,6 +45,7 @@ interface SavedReport {
 
 interface AIReportProps {
   projectId: string
+  projectTitle?: string
   responseCount: number
   existingReport?: SavedReport | null
   existingSuggestions?: any[]
@@ -52,32 +54,49 @@ interface AIReportProps {
 
 const MIN_RESPONSES = 3
 
-export function AIReport({ projectId, responseCount, existingReport, existingSuggestions = [], onAddQuestion }: AIReportProps) {
+export function AIReport({ projectId, projectTitle = 'Research Report', responseCount, existingReport, existingSuggestions = [], onAddQuestion }: AIReportProps) {
   const [report, setReport] = useState<SavedReport | null>(existingReport || null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [expandedThemes, setExpandedThemes] = useState<Set<number>>(new Set([0]))
+  const [exporting, setExporting] = useState<'pdf' | 'csv' | null>(null)
 
   async function generateReport() {
     setLoading(true)
     setError(null)
-
     try {
       const res = await fetch('/api/reports', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ project_id: projectId }),
       })
-
       const data = await res.json()
-
       if (!res.ok) throw new Error(data.error || 'Failed to generate report')
-
       setReport(data.report)
     } catch (err: any) {
       setError(err.message)
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function handleExportPDF() {
+    if (!report) return
+    setExporting('pdf')
+    try {
+      await exportReportPDF(report, projectTitle)
+    } finally {
+      setExporting(null)
+    }
+  }
+
+  async function handleExportCSV() {
+    if (!report) return
+    setExporting('csv')
+    try {
+      exportReportCSV(report, projectTitle)
+    } finally {
+      setExporting(null)
     }
   }
 
@@ -88,8 +107,6 @@ export function AIReport({ projectId, responseCount, existingReport, existingSug
       return next
     })
   }
-
-  // ── Not enough responses ───────────────────────────────────
 
   if (responseCount < MIN_RESPONSES) {
     return (
@@ -106,46 +123,32 @@ export function AIReport({ projectId, responseCount, existingReport, existingSug
     )
   }
 
-  // ── No report yet ──────────────────────────────────────────
-
   if (!report) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center">
-        <div className="w-14 h-14 rounded-xl bg-sage-pale border border-sage-DEFAULT/20 flex items-center justify-center mx-auto mb-4">
-          <Sparkles size={22} className="text-sage-DEFAULT" />
+        <div className="w-14 h-14 rounded-xl bg-teal-pale border border-teal/20 flex items-center justify-center mx-auto mb-4">
+          <Sparkles size={22} className="text-teal" />
         </div>
         <h3 className="font-display font-medium text-ink mb-1">Ready to analyse</h3>
         <p className="text-sm text-ink-muted max-w-xs mb-6 leading-relaxed">
           Claude will analyse your {responseCount} responses and produce a plain-language report with themes, insights, and key findings.
         </p>
         {error && (
-          <div className="flex items-center gap-2 px-4 py-3 bg-red-50 border border-red-100 rounded-lg text-sm text-red-700 mb-4 max-w-sm">
+          <div className="flex items-center gap-2 px-4 py-3 bg-lobster-pale border border-lobster/20 rounded-lg text-sm text-lobster-dark mb-4 max-w-sm">
             <AlertCircle size={14} className="flex-shrink-0" />
             {error}
           </div>
         )}
-        <button
-          onClick={generateReport}
-          disabled={loading}
-          className="btn-primary"
-        >
+        <button onClick={generateReport} disabled={loading} className="btn-primary">
           {loading ? (
-            <>
-              <RefreshCw size={14} className="animate-spin" />
-              Analysing responses...
-            </>
+            <><RefreshCw size={14} className="animate-spin" /> Analysing responses...</>
           ) : (
-            <>
-              <Sparkles size={14} />
-              Generate AI report
-            </>
+            <><Sparkles size={14} /> Generate AI report</>
           )}
         </button>
       </div>
     )
   }
-
-  // ── Report ─────────────────────────────────────────────────
 
   const reportData = report as SavedReport & { question_insights: QuestionInsight[]; sample_note?: string }
 
@@ -156,35 +159,50 @@ export function AIReport({ projectId, responseCount, existingReport, existingSug
       <div className="flex items-start justify-between">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <Sparkles size={14} className="text-sage-DEFAULT" />
-            <span className="text-xs font-medium text-sage-DEFAULT uppercase tracking-wide">AI Report</span>
+            <Sparkles size={14} className="text-teal" />
+            <span className="text-xs font-medium text-teal uppercase tracking-wide">AI Report</span>
           </div>
           <p className="text-xs text-ink-faint">
             Based on {report.response_count} response{report.response_count !== 1 ? 's' : ''} · Generated {formatDate(report.generated_at)}
           </p>
         </div>
-        <button
-          onClick={generateReport}
-          disabled={loading}
-          className="btn-ghost text-xs"
-        >
-          <RefreshCw size={12} className={clsx(loading && 'animate-spin')} />
-          {loading ? 'Regenerating...' : 'Regenerate'}
-        </button>
+        <div className="flex items-center gap-2">
+          {/* Export buttons */}
+          <button
+            onClick={handleExportPDF}
+            disabled={!!exporting}
+            className="btn-secondary text-xs py-1.5 px-3"
+          >
+            <Download size={12} />
+            {exporting === 'pdf' ? 'Exporting...' : 'PDF'}
+          </button>
+          <button
+            onClick={handleExportCSV}
+            disabled={!!exporting}
+            className="btn-secondary text-xs py-1.5 px-3"
+          >
+            <Download size={12} />
+            {exporting === 'csv' ? 'Exporting...' : 'CSV'}
+          </button>
+          <button onClick={generateReport} disabled={loading} className="btn-ghost text-xs">
+            <RefreshCw size={12} className={clsx(loading && 'animate-spin')} />
+            {loading ? 'Regenerating...' : 'Regenerate'}
+          </button>
+        </div>
       </div>
 
       {error && (
-        <div className="flex items-center gap-2 px-4 py-3 bg-red-50 border border-red-100 rounded-lg text-sm text-red-700">
+        <div className="flex items-center gap-2 px-4 py-3 bg-lobster-pale border border-lobster/20 rounded-lg text-sm text-lobster-dark">
           <AlertCircle size={14} /> {error}
         </div>
       )}
 
-      {/* Executive summary */}
-      <div className="card p-6 bg-sage-pale border-sage-DEFAULT/15">
+      {/* Summary */}
+      <div className="card p-6 bg-teal-pale border-teal/15">
         <h2 className="font-display font-semibold text-ink text-lg mb-3">Summary</h2>
         <p className="text-sm text-ink leading-relaxed">{report.summary}</p>
         {reportData.sample_note && (
-          <p className="text-xs text-ink-muted mt-3 italic border-t border-sage-DEFAULT/15 pt-3">
+          <p className="text-xs text-ink-muted mt-3 italic border-t border-teal/15 pt-3">
             {reportData.sample_note}
           </p>
         )}
@@ -200,7 +218,7 @@ export function AIReport({ projectId, responseCount, existingReport, existingSug
           <div className="space-y-3">
             {report.key_findings.map((finding, i) => (
               <div key={i} className="flex items-start gap-3 p-4 card">
-                <span className="flex-shrink-0 w-6 h-6 rounded-full bg-ink text-[#FAFAF8] flex items-center justify-center text-xs font-mono font-medium mt-0.5">
+                <span className="flex-shrink-0 w-6 h-6 rounded-full bg-ink text-white flex items-center justify-center text-xs font-mono font-medium mt-0.5">
                   {i + 1}
                 </span>
                 <p className="text-sm text-ink leading-relaxed">{finding}</p>
@@ -210,7 +228,7 @@ export function AIReport({ projectId, responseCount, existingReport, existingSug
         </div>
       )}
 
-      {/* Per-question insights */}
+      {/* Question insights */}
       {(reportData.question_insights ?? []).length > 0 && (
         <div>
           <div className="flex items-center gap-2 mb-4">
@@ -223,10 +241,11 @@ export function AIReport({ projectId, responseCount, existingReport, existingSug
                 <div className="flex items-start gap-3">
                   <span className={clsx(
                     'flex-shrink-0 px-1.5 py-0.5 rounded text-xs font-mono font-medium mt-0.5',
-                    insight.type === 'scale' && 'bg-amber-50 text-amber-600',
-                    insight.type === 'multiple_choice' && 'bg-blue-50 text-blue-600',
-                    insight.type === 'yes_no' && 'bg-purple-50 text-purple-600',
-                    insight.type === 'open_text' && 'bg-sage-pale text-sage-DEFAULT',
+                    insight.type === 'scale' && 'bg-amber-pale text-amber-signal',
+                    insight.type === 'multiple_choice' && 'bg-teal-pale text-teal',
+                    insight.type === 'yes_no' && 'bg-coral-pale text-coral',
+                    insight.type === 'open_text' && 'bg-paper-warm text-ink-muted',
+                    insight.type === 'numeric' && 'bg-lobster-pale text-lobster',
                   )}>
                     {insight.type.replace('_', ' ')}
                   </span>
@@ -237,7 +256,7 @@ export function AIReport({ projectId, responseCount, existingReport, existingSug
                         <span className={clsx(
                           'flex-shrink-0 text-xs font-mono px-1.5 py-0.5 rounded',
                           insight.response_count < insight.total_responses
-                            ? 'bg-amber-pale text-amber-600'
+                            ? 'bg-amber-pale text-amber-signal'
                             : 'bg-paper-warm text-ink-faint'
                         )}>
                           {insight.response_count}/{insight.total_responses}
@@ -247,7 +266,7 @@ export function AIReport({ projectId, responseCount, existingReport, existingSug
                     <p className="text-sm font-medium text-ink mb-1">{insight.headline}</p>
                     <p className="text-xs text-ink-muted leading-relaxed">{insight.detail}</p>
                     {insight.coverage_note && (
-                      <p className="text-xs text-amber-600 mt-1.5 italic">{insight.coverage_note}</p>
+                      <p className="text-xs text-amber-signal mt-1.5 italic">{insight.coverage_note}</p>
                     )}
                   </div>
                 </div>
@@ -286,7 +305,6 @@ export function AIReport({ projectId, responseCount, existingReport, existingSug
                     {expandedThemes.has(i) ? <ChevronUp size={14} className="text-ink-faint" /> : <ChevronDown size={14} className="text-ink-faint" />}
                   </div>
                 </button>
-
                 {expandedThemes.has(i) && theme.supporting_quotes && theme.supporting_quotes.length > 0 && (
                   <div className="border-t border-paper-border px-4 pb-4 pt-3 space-y-2">
                     {theme.supporting_quotes.map((quote, j) => (
@@ -302,7 +320,8 @@ export function AIReport({ projectId, responseCount, existingReport, existingSug
           </div>
         </div>
       )}
-      {/* Follow-up suggestions — only shown when report exists */}
+
+      {/* Follow-up suggestions */}
       {report && (
         <div className="border-t border-paper-border pt-8">
           <FollowUpSuggestions
@@ -313,7 +332,6 @@ export function AIReport({ projectId, responseCount, existingReport, existingSug
           />
         </div>
       )}
-
     </div>
   )
 }

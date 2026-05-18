@@ -101,16 +101,14 @@ function OpenTextVis({ values, naCount }: { values: string[]; naCount: number })
             return (
               <span
                 key={word}
-                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs border"
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium"
                 style={{
-                  backgroundColor: `rgba(74, 124, 111, ${0.08 + intensity * 0.18})`,
-                  borderColor: `rgba(74, 124, 111, ${0.15 + intensity * 0.25})`,
-                  color: intensity > 0.5 ? '#067cc6' : '#089bf7',
-                  fontWeight: intensity > 0.6 ? 500 : 400,
+                  backgroundColor: `rgba(8, 155, 247, ${0.55 + intensity * 0.45})`,
+                  color: '#ffffff',
                 }}
               >
                 {word}
-                <span className="font-mono opacity-60">{count}</span>
+                <span className="opacity-75 font-mono">{count}</span>
               </span>
             )
           })}
@@ -147,14 +145,14 @@ function MultipleChoiceVis({
               <span className="text-xs text-ink leading-snug">{label}</span>
               <span className="text-xs font-mono text-ink-muted ml-4 shrink-0">{count} · {pct}%</span>
             </div>
-            <div className="h-2 w-full rounded-full overflow-hidden" style={{ backgroundColor: '#E0DFD8' }}>
+            <div className="h-2.5 w-full rounded-full overflow-hidden" style={{ backgroundColor: '#e8e8e8' }}>
               <div
                 className="h-full rounded-full"
                 style={{
                   width: `${pct}%`,
                   backgroundColor: '#089bf7',
                   transition: 'width 0.5s ease',
-                  minWidth: count > 0 ? '4px' : '0',
+                  minWidth: count > 0 ? '6px' : '0',
                 }}
               />
             </div>
@@ -203,8 +201,8 @@ function ScaleVis({
                 className="w-full rounded-t"
                 style={{
                   height: `${height}px`,
-                  backgroundColor: isAboveAvg ? '#089bf7' : '#e6f5fe',
-                  opacity: count === 0 ? 0.3 : 1,
+                  backgroundColor: isAboveAvg ? '#089bf7' : '#b0d4e8',
+                  opacity: count === 0 ? 0.25 : 1,
                   transition: 'height 0.5s ease',
                 }}
               />
@@ -237,7 +235,7 @@ function YesNoVis({
     <div className="space-y-2">
       <div className="flex gap-3">
         <div className="flex-1 rounded-lg bg-white border border-paper-border px-4 py-3">
-          <span className="font-display text-2xl font-semibold text-sage-DEFAULT">{yesCount}</span>
+          <span className="font-display text-2xl font-semibold text-teal">{yesCount}</span>
           <p className="text-xs text-ink-muted mt-0.5">{yesLabel} · {yesPct}%</p>
         </div>
         <div className="flex-1 rounded-lg bg-white border border-paper-border px-4 py-3">

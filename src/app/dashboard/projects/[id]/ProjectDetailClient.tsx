@@ -8,6 +8,8 @@ import { QuestionVisualisation } from '@/components/QuestionVisualisation'
 import { clsx } from 'clsx'
 import { Edit3, Users, Share2, Copy, CheckCheck, ExternalLink, Sparkles } from 'lucide-react'
 import { UsageIndicator } from '@/components/UsageIndicator'
+import { exportResponsesPDF, exportResponsesCSV } from '@/lib/exportUtils'
+import { Download } from 'lucide-react'
 
 type Tab = 'build' | 'responses' | 'report' | 'share'
 
@@ -163,6 +165,7 @@ export default function ProjectDetailClient({ project, responses, existingReport
           )}
           <AIReport
             projectId={currentProject.id}
+            projectTitle={currentProject.title}
             responseCount={responses.length}
             existingReport={existingReport}
             existingSuggestions={existingSuggestions}
@@ -194,6 +197,26 @@ function ResponsesTab({
   project: Project
   onViewReport: () => void
 }) {
+  const [exporting, setExporting] = useState<'pdf' | 'csv' | null>(null)
+
+  async function handleExportPDF() {
+    setExporting('pdf')
+    try {
+      await exportResponsesPDF(responses, project.questions, project.title)
+    } finally {
+      setExporting(null)
+    }
+  }
+
+  function handleExportCSV() {
+    setExporting('csv')
+    try {
+      exportResponsesCSV(responses, project.questions, project.title)
+    } finally {
+      setExporting(null)
+    }
+  }
+
   if (responses.length === 0) {
     return (
       <div className="max-w-7xl mx-auto px-8 py-16 text-center">
@@ -214,16 +237,33 @@ function ResponsesTab({
         <h2 className="font-display font-semibold text-ink text-xl">
           {responses.length} response{responses.length !== 1 ? 's' : ''}
         </h2>
-        <button onClick={onViewReport} className="btn-primary">
-          <Sparkles size={13} />
-          View AI report
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleExportPDF}
+            disabled={!!exporting}
+            className="btn-secondary text-xs py-1.5 px-3"
+          >
+            <Download size={12} />
+            {exporting === 'pdf' ? 'Exporting...' : 'PDF'}
+          </button>
+          <button
+            onClick={handleExportCSV}
+            disabled={!!exporting}
+            className="btn-secondary text-xs py-1.5 px-3"
+          >
+            <Download size={12} />
+            {exporting === 'csv' ? 'Exporting...' : 'CSV'}
+          </button>
+          <button onClick={onViewReport} className="btn-primary">
+            <Sparkles size={13} />
+            View AI report
+          </button>
+        </div>
       </div>
 
       <div className="space-y-3">
         {project.questions.map((question, i) => (
           <div key={question.id} className="card p-5">
-            {/* Question header */}
             <div className="flex items-start gap-2.5">
               <span className="text-xs font-mono text-ink-faint mt-0.5 shrink-0">Q{i + 1}</span>
               <div>
@@ -236,7 +276,6 @@ function ResponsesTab({
                 </p>
               </div>
             </div>
-            {/* Visualisation nested below, separated by a divider */}
             <QuestionVisualisation question={question} responses={responses} />
           </div>
         ))}
