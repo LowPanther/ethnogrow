@@ -1,0 +1,164 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    @apply bg-paper text-ink font-sans;
+    font-size: 16px;
+    line-height: 1.6;
+  }
+
+  h1, h2, h3 {
+    @apply font-display;
+    line-height: 1.25;
+    letter-spacing: -0.01em;
+  }
+
+  h4, h5, h6 {
+    @apply font-sans font-medium;
+    letter-spacing: -0.01em;
+  }
+}
+
+@layer components {
+  /* ── Buttons ─────────────────────────────────────────────── */
+
+  /* Primary — dark background, white text */
+  .btn-primary {
+    @apply inline-flex items-center gap-2 px-4 py-2 bg-ink text-white
+           text-sm font-medium rounded transition-all duration-150
+           active:scale-[0.98]
+           disabled:opacity-40 disabled:cursor-not-allowed;
+    background-color: #0c1e27;
+  }
+  .btn-primary:hover:not(:disabled) {
+    background-color: #f04b0f;
+  }
+
+  /* Secondary — grey */
+  .btn-secondary {
+    @apply inline-flex items-center gap-2 px-4 py-2 bg-paper-warm text-ink
+           text-sm font-medium rounded border border-paper-border transition-all
+           duration-150 hover:bg-paper-mid active:scale-[0.98]
+           disabled:opacity-40 disabled:cursor-not-allowed;
+  }
+
+  /* Ghost — no background */
+  .btn-ghost {
+    @apply inline-flex items-center gap-2 px-3 py-1.5 text-ink-muted
+           text-sm font-medium rounded transition-all duration-150
+           hover:bg-paper-warm hover:text-ink active:scale-[0.98];
+  }
+
+  /* Serious/danger — lobster pink */
+  .btn-danger {
+    @apply inline-flex items-center gap-2 px-4 py-2 bg-lobster-pale text-lobster-dark
+           text-sm font-medium rounded transition-all duration-150
+           active:scale-[0.98];
+    border: 1px solid rgba(201, 54, 56, 0.2);
+  }
+  .btn-danger:hover {
+    background-color: rgba(201, 54, 56, 0.12);
+  }
+
+  /* ── Form elements ───────────────────────────────────────── */
+
+  .input {
+    @apply w-full px-3 py-2 bg-white border border-paper-border rounded
+           text-ink placeholder:text-ink-faint outline-none transition-all
+           duration-150 focus:ring-2;
+    font-size: 1rem;
+    --tw-ring-color: rgba(8, 155, 247, 0.12);
+  }
+  .input:focus {
+    border-color: #089bf7;
+  }
+
+  .textarea {
+    @apply w-full px-3 py-2 bg-white border border-paper-border rounded
+           text-ink placeholder:text-ink-faint outline-none transition-all
+           duration-150 focus:ring-2 resize-none;
+    font-size: 1rem;
+    --tw-ring-color: rgba(8, 155, 247, 0.12);
+  }
+  .textarea:focus {
+    border-color: #089bf7;
+  }
+
+  .label {
+    @apply block text-sm font-medium text-ink-muted mb-1.5;
+  }
+
+  /* ── Cards ───────────────────────────────────────────────── */
+
+  .card {
+    @apply bg-white border border-paper-border rounded-lg shadow-card;
+  }
+
+  .card-elevated {
+    @apply bg-white border border-paper-border rounded-lg shadow-lifted;
+  }
+
+  /* ── Question type badge ─────────────────────────────────── */
+
+  .type-badge {
+    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-sm text-sm
+           font-mono font-medium;
+  }
+}
+
+/* ── Drag & drop placeholder ─────────────────────────────────── */
+.dnd-placeholder {
+  @apply border-2 border-dashed border-paper-border rounded-lg;
+  background-color: rgba(245, 245, 245, 0.8);
+  min-height: 72px;
+}
+
+/* ── Scrollbar ────────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-paper-border rounded-full;
+}
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-ink-faint;
+}
+
+/* ── Selection ────────────────────────────────────────────────── */
+::selection {
+  background-color: #e6f5fe;
+  color: #0c1e27;
+}
+
+/* ── Mobile safe areas ───────────────────────────────────────── */
+.pb-safe {
+  padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
+}
+
+/* ── Prevent pull-to-refresh on participant view ─────────────── */
+.participant-root {
+  overscroll-behavior: none;
+}
+
+/* ── iOS textarea resize prevention ─────────────────────────── */
+@supports (-webkit-touch-callout: none) {
+  textarea, input[type="text"], input[type="email"] {
+    font-size: 16px;
+  }
+}
