@@ -1,34 +1,65 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase-browser'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Layers, ArrowRight, Loader2 } from 'lucide-react'
 import { Footer } from '@/components/Footer'
 
-export default function LoginPage() {
-  const [email, setEmail] = useState('')
+export default function ResetPasswordPage() {
   const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [done, setDone] = useState(false)
   const router = useRouter()
 
-  async function handleLogin(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    setLoading(true)
     setError(null)
 
+    if (password !== confirmPassword) {
+      setError('Passwords do not match.')
+      return
+    }
+
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters.')
+      return
+    }
+
+    setLoading(true)
+
     const supabase = createClient()
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    const { error } = await supabase.auth.updateUser({ password })
 
     if (error) {
       setError(error.message)
       setLoading(false)
     } else {
-      router.push('/dashboard')
-      router.refresh()
+      setDone(true)
+      setTimeout(() => router.push('/dashboard'), 2000)
     }
+  }
+
+  if (done) {
+    return (
+      <div className="min-h-screen bg-paper flex flex-col">
+        <div className="flex-1 flex flex-col items-center justify-center px-6">
+          <div className="w-full max-w-sm text-center">
+            <div className="w-14 h-14 bg-teal-pale rounded-2xl flex items-center justify-center mx-auto mb-4 text-2xl">
+              ✦
+            </div>
+            <h2 className="font-display font-semibold text-ink text-xl mb-2">Password updated</h2>
+            <p className="text-sm text-ink-muted leading-relaxed">
+              Your password has been changed. Redirecting you to the dashboard...
+            </p>
+          </div>
+        </div>
+        <Footer />
+      </div>
+    )
   }
 
   return (
@@ -44,44 +75,37 @@ export default function LoginPage() {
 
           <div className="card-elevated p-8">
             <h1 className="font-display font-semibold text-ink text-xl mb-1 text-center">
-              Welcome back
+              Set a new password
             </h1>
             <p className="text-sm text-ink-muted text-center mb-6">
-              Sign in to your researcher account
+              Choose a strong password of at least 8 characters.
             </p>
 
-            <form onSubmit={handleLogin} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="label">Email</label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  className="input"
-                  placeholder="you@example.com"
-                  required
-                  autoComplete="email"
-                />
-              </div>
-
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="label mb-0">Password</label>
-                  <Link
-                    href="/forgot-password"
-                    className="text-sm text-ink-muted hover:text-ink transition-colors"
-                  >
-                    Forgot password?
-                  </Link>
-                </div>
+                <label className="label">New password</label>
                 <input
                   type="password"
                   value={password}
                   onChange={e => setPassword(e.target.value)}
                   className="input"
-                  placeholder="••••••••"
+                  placeholder="8+ characters"
                   required
-                  autoComplete="current-password"
+                  minLength={8}
+                  autoComplete="new-password"
+                />
+              </div>
+
+              <div>
+                <label className="label">Confirm new password</label>
+                <input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={e => setConfirmPassword(e.target.value)}
+                  className="input"
+                  placeholder="Repeat your password"
+                  required
+                  autoComplete="new-password"
                 />
               </div>
 
@@ -100,20 +124,13 @@ export default function LoginPage() {
                   <Loader2 size={15} className="animate-spin" />
                 ) : (
                   <>
-                    Sign in
+                    Update password
                     <ArrowRight size={15} />
                   </>
                 )}
               </button>
             </form>
           </div>
-
-          <p className="text-center text-sm text-ink-muted mt-4">
-            Don't have an account?{' '}
-            <Link href="/signup" className="text-ink font-medium hover:underline">
-              Sign up
-            </Link>
-          </p>
         </div>
       </div>
       <Footer />
