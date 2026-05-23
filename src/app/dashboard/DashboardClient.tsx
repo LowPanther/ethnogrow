@@ -61,7 +61,6 @@ export default function DashboardClient({ initialProjects, usage }: DashboardCli
     <main className="max-w-7xl mx-auto px-8 py-12">
       <div className="grid grid-cols-[1fr_280px] gap-12 items-start">
 
-        {/* Main column */}
         <div>
           <div className="flex items-start justify-between mb-10">
             <div>
@@ -85,7 +84,7 @@ export default function DashboardClient({ initialProjects, usage }: DashboardCli
           </div>
 
           {visibleProjects.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-px bg-paper-border border border-paper-border rounded overflow-hidden">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {visibleProjects.map(project => (
                 <ProjectCard
                   key={project.id}
@@ -96,7 +95,12 @@ export default function DashboardClient({ initialProjects, usage }: DashboardCli
               ))}
               <Link
                 href="/dashboard/new"
-                className="bg-paper flex flex-col items-center justify-center gap-2 p-8 text-ink-faint hover:text-ink-muted hover:bg-paper-warm transition-colors min-h-[160px]"
+                className="flex flex-col items-center justify-center gap-2 p-6 text-ink-faint hover:text-ink-muted transition-colors min-h-[140px]"
+                style={{
+                  backgroundColor: 'rgba(15,15,15,0.02)',
+                  border: '0.5px dashed rgba(15,15,15,0.12)',
+                  borderRadius: '4px',
+                }}
               >
                 <Plus size={16} />
                 <span className="text-sm">New project</span>
@@ -111,7 +115,7 @@ export default function DashboardClient({ initialProjects, usage }: DashboardCli
               <p className="text-xs font-medium tracking-widest uppercase text-ink-faint mb-6">
                 Archived ({archivedProjects.length})
               </p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-px bg-paper-border border border-paper-border rounded overflow-hidden">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {archivedProjects.map(project => (
                   <ProjectCard
                     key={project.id}
@@ -125,7 +129,6 @@ export default function DashboardClient({ initialProjects, usage }: DashboardCli
           )}
         </div>
 
-        {/* Sidebar */}
         <aside className="sticky top-[72px]">
           <UsageIndicator
             responsesAnalysed={usage?.responses_analysed ?? 0}
@@ -145,8 +148,6 @@ export default function DashboardClient({ initialProjects, usage }: DashboardCli
     </main>
   )
 }
-
-// ─── Project Card ─────────────────────────────────────────────────────────────
 
 function ProjectCard({
   project,
@@ -175,10 +176,11 @@ function ProjectCard({
   }, [menuOpen])
 
   return (
-    <div className={clsx('bg-paper p-6 group relative', isArchived && 'opacity-50')}>
-
-      {/* Header row */}
-      <div className="flex items-start justify-between mb-4">
+    <div
+      className={clsx('p-6 group relative transition-colors', isArchived && 'opacity-50')}
+      style={{ backgroundColor: 'rgba(15,15,15,0.03)', borderRadius: '4px' }}
+    >
+      <div className="flex items-center justify-between mb-4">
         <span className={clsx('flex items-center gap-1.5 text-xs font-medium', statusStyle.text)}>
           <span className={clsx('w-1.5 h-1.5 rounded-full flex-shrink-0', statusStyle.dot)} />
           {statusStyle.label}
@@ -249,8 +251,6 @@ function ProjectCard({
   )
 }
 
-// ─── Delete Modal ─────────────────────────────────────────────────────────────
-
 function DeleteModal({
   project,
   onConfirm,
@@ -294,12 +294,13 @@ function DeleteModal({
   )
 }
 
-// ─── Empty state ──────────────────────────────────────────────────────────────
-
 function EmptyDashboard() {
   return (
-    <div className="flex flex-col items-center justify-center py-24 text-center border border-paper-border rounded">
-      <p className="text-xs font-medium tracking-widest uppercase text-ink-faint mb-6">✦</p>
+    <div
+      className="flex flex-col items-center justify-center py-24 text-center"
+      style={{ backgroundColor: 'rgba(15,15,15,0.02)', borderRadius: '4px' }}
+    >
+      <p className="text-2xl text-ink-faint mb-6">✦</p>
       <h2
         className="font-display font-light text-ink mb-2"
         style={{ fontSize: '24px', letterSpacing: '-0.02em' }}
@@ -316,8 +317,6 @@ function EmptyDashboard() {
     </div>
   )
 }
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function formatDate(dateStr: string): string {
   const date = new Date(dateStr)

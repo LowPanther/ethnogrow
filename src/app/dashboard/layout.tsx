@@ -1,7 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createServerSideClient } from '@/lib/supabase-server'
 import Link from 'next/link'
-import { Layers } from 'lucide-react'
 import { Footer } from '@/components/Footer'
 import { ProfileDropdown } from '@/components/ProfileDropdown'
 import { ThemeProvider } from '@/components/ThemeProvider'
@@ -42,13 +41,12 @@ export default async function DashboardLayout({
         {/* Top nav */}
         <nav className="border-b border-paper-border bg-paper/90 backdrop-blur-sm sticky top-0 z-40">
           <div className="max-w-7xl mx-auto px-8 h-14 flex items-center justify-between">
-            <Link href="/dashboard" className="flex items-center gap-2 group">
-              <div className="w-7 h-7 bg-ink rounded flex items-center justify-center">
-                <Layers size={14} className="text-white" />
-              </div>
-              <span className="font-display font-semibold text-ink text-lg tracking-tight">
-                ethnogrow
-              </span>
+            <Link
+              href="/dashboard"
+              className="font-display font-normal text-ink text-lg"
+              style={{ letterSpacing: '-0.02em' }}
+            >
+              Ethnogrow
             </Link>
 
             <div className="flex items-center gap-3">
