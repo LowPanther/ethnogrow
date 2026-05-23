@@ -1,8 +1,7 @@
 import Link from 'next/link'
-import { Layers, ArrowLeft } from 'lucide-react'
 import { Footer } from '@/components/Footer'
 
-export const metadata = { title: 'FAQ' }
+export const metadata = { title: 'FAQ — Ethnogrow' }
 
 const FAQS = [
   {
@@ -39,7 +38,7 @@ const FAQS = [
       },
       {
         q: 'How do I close a questionnaire?',
-        a: 'From your project dashboard, use the "Close responses" button in the tab bar. This stops new responses from being collected but preserves all existing data. You can reopen at any time.'
+        a: 'From your project dashboard, use the close responses toggle. This stops new responses from being collected but preserves all existing data. You can reopen at any time.'
       },
     ]
   },
@@ -51,12 +50,12 @@ const FAQS = [
         a: 'Once you have responses, go to the AI Report tab and generate a report. The AI analyses your responses and produces a structured report with a summary, themes, key findings, and supporting quotes. Reports are stored so you can return to them at any time.'
       },
       {
-        q: 'What counts as a response analysed?',
-        a: 'Each time a participant completes your questionnaire, that counts as one response. Your plan\'s cap applies to how many responses are included in AI analysis — data collection is never blocked regardless of your plan.'
+        q: 'What counts as an AI report?',
+        a: 'Each time you generate an AI analysis on a project, that uses one report from your monthly allowance. Data collection is never blocked regardless of your plan.'
       },
       {
-        q: 'What happens when I hit my analysis cap?',
-        a: 'New responses continue to be collected and stored. They just won\'t be included in AI reports until you upgrade your plan or purchase additional token credits.'
+        q: 'What happens when I hit my monthly report limit?',
+        a: 'You can still collect responses and view existing reports. You just won\'t be able to generate new AI reports until your allowance resets or you upgrade your plan.'
       },
       {
         q: 'Are participant responses anonymous?',
@@ -69,7 +68,7 @@ const FAQS = [
     questions: [
       {
         q: 'What plans are available?',
-        a: 'Ethnogrow offers three plans: Free ($0/month, 1 AI report per month), Starter ($9/month, 5 AI reports per month), and Pro ($19/month, 20 AI reports per month). Additional reports can be purchased as token add-ons on paid plans.'
+        a: 'Ethnogrow offers three plans: Free ($0/month, 1 AI report per month), Starter ($5/month, 2 AI reports per month), and Pro ($9/month, 5 AI reports per month). All plans include unlimited data collection.'
       },
       {
         q: 'Can I upgrade or downgrade at any time?',
@@ -77,7 +76,11 @@ const FAQS = [
       },
       {
         q: 'Do unused reports roll over to the next month?',
-        a: 'No — the monthly cap resets each billing cycle. Token add-ons do not expire.'
+        a: 'No — the monthly allowance resets each billing cycle.'
+      },
+      {
+        q: 'When will paid plans be available?',
+        a: 'We\'re finalising our payments setup. Paid plans will be available very soon. In the meantime, all users have access to the Free plan.'
       },
     ]
   },
@@ -94,7 +97,7 @@ const FAQS = [
       },
       {
         q: 'Can I delete my data?',
-        a: 'Yes. You can delete individual projects and all associated responses from your dashboard. To delete your account entirely, contact us at hello@ethnogrow.com.'
+        a: 'Yes. You can delete individual projects and all associated responses from your dashboard. You can also close your account entirely from the account menu, which permanently deletes all your data.'
       },
     ]
   },
@@ -103,52 +106,63 @@ const FAQS = [
 export default function FAQPage() {
   return (
     <div className="min-h-screen bg-paper flex flex-col">
-      <div className="flex-1">
-        {/* Nav */}
-        <nav className="border-b border-paper-border">
-          <div className="max-w-7xl mx-auto px-8 h-14 flex items-center justify-between">
-            <Link href="/" className="flex items-center gap-2">
-              <div className="w-7 h-7 bg-ink rounded flex items-center justify-center">
-                <Layers size={14} className="text-white" />
-              </div>
-              <span className="font-display font-semibold text-ink text-sm tracking-tight">Ethnogrow</span>
-            </Link>
-            <Link href="/login" className="text-sm text-ink-muted hover:text-ink transition-colors">
-              Sign in
-            </Link>
-          </div>
-        </nav>
 
-        <main className="max-w-3xl mx-auto px-8 py-12">
-          <div className="mb-10">
-            <h1 className="font-display font-semibold text-ink text-3xl mb-3">Frequently asked questions</h1>
-            <p className="text-ink-muted">
+      <nav className="border-b border-paper-border">
+        <div className="max-w-7xl mx-auto px-8 h-14 flex items-center justify-between">
+          <Link href="/" className="font-display font-normal text-ink text-lg tracking-tight" style={{ letterSpacing: '-0.02em' }}>
+            Ethnogrow
+          </Link>
+          <Link href="/login" className="text-sm text-ink-muted hover:text-ink transition-colors">
+            Sign in
+          </Link>
+        </div>
+      </nav>
+
+      <main className="flex-1 max-w-7xl mx-auto px-8 py-16 w-full">
+
+        <div className="grid grid-cols-[200px_1fr] gap-12 items-start mb-16">
+          <p className="text-xs font-medium tracking-widest uppercase text-ink-faint pt-2 sticky top-6">FAQ</p>
+          <div>
+            <h1
+              className="font-display font-light text-ink mb-4"
+              style={{ fontSize: '32px', letterSpacing: '-0.02em', lineHeight: '1.2' }}
+            >
+              Frequently asked questions
+            </h1>
+            <p className="text-ink-muted text-sm">
               Can't find what you're looking for? Email us at{' '}
               <a href="mailto:hello@ethnogrow.com" className="text-ink font-medium hover:underline">
                 hello@ethnogrow.com
               </a>
             </p>
           </div>
+        </div>
 
-          <div className="space-y-12">
-            {FAQS.map(section => (
-              <div key={section.category}>
-                <h2 className="font-display font-semibold text-ink text-xl mb-6 pb-3 border-b border-paper-border">
-                  {section.category}
-                </h2>
-                <div className="space-y-6">
-                  {section.questions.map(({ q, a }) => (
-                    <div key={q}>
-                      <h3 className="font-medium text-ink mb-2">{q}</h3>
-                      <p className="text-ink-muted leading-relaxed">{a}</p>
-                    </div>
-                  ))}
-                </div>
+        <div className="space-y-0">
+          {FAQS.map(section => (
+            <div key={section.category} className="grid grid-cols-[200px_1fr] gap-12 items-start border-t border-paper-border py-12">
+              <p className="text-xs font-medium tracking-widest uppercase text-ink-faint pt-1 sticky top-6">
+                {section.category}
+              </p>
+              <div className="space-y-8">
+                {section.questions.map(({ q, a }) => (
+                  <div key={q}>
+                    <h3
+                      className="font-display font-normal text-ink mb-2"
+                      style={{ fontSize: '16px', letterSpacing: '-0.01em' }}
+                    >
+                      {q}
+                    </h3>
+                    <p className="text-sm text-ink-muted leading-relaxed">{a}</p>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        </main>
-      </div>
+            </div>
+          ))}
+        </div>
+
+      </main>
+
       <Footer />
     </div>
   )
