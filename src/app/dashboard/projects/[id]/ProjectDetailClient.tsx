@@ -647,6 +647,84 @@ function ShareTab({
               ))}
             </ul>
           </div>
+
+          {/* Restrict access — allowlist */}
+          <div className="pt-8 border-t border-paper-border">
+            <div className="flex items-start justify-between mb-4">
+              <div>
+                <p className="text-xs font-medium tracking-widest uppercase text-ink-faint mb-1">
+                  Restrict access
+                </p>
+                <p className="text-sm text-ink-muted leading-relaxed">
+                  Limit responses to specific email addresses or domains.
+                </p>
+              </div>
+              <button
+                onClick={() => setAllowlistEnabled(!allowlistEnabled)}
+                className={clsx(
+                  'flex items-center gap-1.5 text-xs font-medium transition-colors flex-shrink-0 ml-6 mt-1',
+                  allowlistEnabled ? 'text-ink' : 'text-ink-faint'
+                )}
+              >
+                {allowlistEnabled
+                  ? <span className="text-teal text-base leading-none">On</span>
+                  : <span className="text-base leading-none text-ink-faint">Off</span>
+                }
+              </button>
+            </div>
+
+            {allowlistEnabled && (
+              <div className="space-y-3 animate-slide-down">
+                <div>
+                  <label className="block text-xs text-ink-muted mb-1.5">
+                    Email addresses or domains — one per line, or comma-separated
+                  </label>
+                  <textarea
+                    value={allowlistDraft}
+                    onChange={e => setAllowlistDraft(e.target.value)}
+                    className="textarea text-sm font-mono"
+                    rows={6}
+                    placeholder="company.com&#10;john@partner.com&#10;another.org"
+                  />
+                  <p className="text-xs text-ink-faint mt-1.5 leading-relaxed">
+                    Enter full email addresses or domains to match all addresses at that domain.
+                    Matching is exact — subdomains are not included.
+                  </p>
+                </div>
+
+                {allowlistError && (
+                  <p className="text-xs px-3 py-2 rounded" style={{ color: '#c93638', backgroundColor: 'rgba(201,54,56,0.06)', border: '0.5px solid rgba(201,54,56,0.2)' }}>
+                    {allowlistError}
+                  </p>
+                )}
+
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-ink-faint">
+                    {allowlistDraft.split(/[\n,]+/).map((e: string) => e.trim()).filter((e: string) => e.length > 0).length} entries
+                  </p>
+                  <button
+                    onClick={onSaveAllowlist}
+                    disabled={allowlistSaving}
+                    className="btn-primary text-xs py-1.5 px-4"
+                  >
+                    {allowlistSaved ? 'Saved' : allowlistSaving ? 'Saving…' : 'Save allowlist'}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {!allowlistEnabled && allowlistDraft.trim().length > 0 && (
+              <div className="mt-3">
+                <button
+                  onClick={onSaveAllowlist}
+                  disabled={allowlistSaving}
+                  className="btn-secondary text-xs py-1.5 px-4"
+                >
+                  {allowlistSaved ? 'Saved' : 'Save (clear allowlist)'}
+                </button>
+              </div>
+            )}
+          </div>
     </div>
   )
 }
