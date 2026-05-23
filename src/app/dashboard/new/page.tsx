@@ -26,7 +26,7 @@ export default function NewProjectPage() {
   if (mode === 'choose') {
     return (
       <div className="min-h-screen bg-paper flex flex-col items-center justify-center px-8">
-        <div className="w-full max-w-md">
+        <div className="w-full max-w-lg">
 
           <h1
             className="font-display font-light text-ink mb-2 text-center"
@@ -41,54 +41,44 @@ export default function NewProjectPage() {
           <div className="grid grid-cols-2 gap-4">
             <button
               onClick={() => setMode('generate')}
-              className="p-6 text-left transition-colors group"
-              style={{
-                backgroundColor: 'rgba(15,15,15,0.03)',
-                borderRadius: '4px',
-                border: '0.5px solid rgba(15,15,15,0.08)',
-              }}
-              onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'rgba(15,15,15,0.05)')}
-              onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'rgba(15,15,15,0.03)')}
+              className="p-8 text-left border border-paper-border hover:border-ink/20 hover:bg-paper-warm transition-colors"
+              style={{ borderRadius: '4px' }}
             >
-              <div className="w-8 h-8 flex items-center justify-center mb-4"
+              <div
+                className="w-9 h-9 flex items-center justify-center mb-5"
                 style={{ backgroundColor: 'rgba(8,155,247,0.1)', borderRadius: '4px' }}
               >
-                <Wand2 size={16} className="text-teal" />
+                <Wand2 size={17} className="text-teal" />
               </div>
               <h3
-                className="font-display font-normal text-ink mb-1.5"
-                style={{ fontSize: '15px', letterSpacing: '-0.01em' }}
+                className="font-display font-normal text-ink mb-2"
+                style={{ fontSize: '16px', letterSpacing: '-0.01em' }}
               >
                 Generate with AI
               </h3>
-              <p className="text-xs text-ink-muted leading-relaxed">
+              <p className="text-sm text-ink-muted leading-relaxed">
                 Describe your study and we'll design the questions for you.
               </p>
             </button>
 
             <button
               onClick={() => setMode('build')}
-              className="p-6 text-left transition-colors group"
-              style={{
-                backgroundColor: 'rgba(15,15,15,0.03)',
-                borderRadius: '4px',
-                border: '0.5px solid rgba(15,15,15,0.08)',
-              }}
-              onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'rgba(15,15,15,0.05)')}
-              onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'rgba(15,15,15,0.03)')}
+              className="p-8 text-left border border-paper-border hover:border-ink/20 hover:bg-paper-warm transition-colors"
+              style={{ borderRadius: '4px' }}
             >
-              <div className="w-8 h-8 flex items-center justify-center mb-4"
+              <div
+                className="w-9 h-9 flex items-center justify-center mb-5"
                 style={{ backgroundColor: 'rgba(15,15,15,0.06)', borderRadius: '4px' }}
               >
-                <PenLine size={16} className="text-ink-muted" />
+                <PenLine size={17} className="text-ink-muted" />
               </div>
               <h3
-                className="font-display font-normal text-ink mb-1.5"
-                style={{ fontSize: '15px', letterSpacing: '-0.01em' }}
+                className="font-display font-normal text-ink mb-2"
+                style={{ fontSize: '16px', letterSpacing: '-0.01em' }}
               >
                 Build from scratch
               </h3>
-              <p className="text-xs text-ink-muted leading-relaxed">
+              <p className="text-sm text-ink-muted leading-relaxed">
                 Start with a blank questionnaire and add your own questions.
               </p>
             </button>

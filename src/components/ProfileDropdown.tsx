@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase-browser'
 import { useTheme } from '@/components/ThemeProvider'
 import { LogOut, Moon, Sun, Trash2, CreditCard, ArrowUpCircle } from 'lucide-react'
+import { createPortal } from 'react-dom'
 
 interface ProfileDropdownProps {
   email: string
@@ -18,20 +19,40 @@ export function ProfileDropdown({ email, initials, plan }: ProfileDropdownProps)
   const [showCancelModal, setShowCancelModal] = useState(false)
   const [closing, setClosing] = useState(false)
   const [confirmText, setConfirmText] = useState('')
+  const [dropdownPos, setDropdownPos] = useState({ top: 0, right: 0 })
+  const [mounted, setMounted] = useState(false)
+  const avatarRef = useRef<HTMLButtonElement>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
   const { theme, toggle } = useTheme()
 
-  // Close dropdown on outside click
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
   useEffect(() => {
     function handleClick(e: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+      if (
+        dropdownRef.current && !dropdownRef.current.contains(e.target as Node) &&
+        avatarRef.current && !avatarRef.current.contains(e.target as Node)
+      ) {
         setOpen(false)
       }
     }
     document.addEventListener('mousedown', handleClick)
     return () => document.removeEventListener('mousedown', handleClick)
   }, [])
+
+  function handleToggle() {
+    if (!open && avatarRef.current) {
+      const rect = avatarRef.current.getBoundingClientRect()
+      setDropdownPos({
+        top: rect.bottom + 8,
+        right: window.innerWidth - rect.right,
+      })
+    }
+    setOpen(prev => !prev)
+  }
 
   async function handleLogout() {
     const supabase = createClient()
@@ -55,86 +76,86 @@ export function ProfileDropdown({ email, initials, plan }: ProfileDropdownProps)
   const isFree = plan === 'free'
   const isPro = plan === 'pro'
 
+  const dropdown = open && mounted ? createPortal(
+    <div
+      ref={dropdownRef}
+      className="w-64 bg-paper border border-paper-border rounded shadow-float animate-slide-down overflow-hidden"
+      style={{
+        position: 'fixed',
+        top: dropdownPos.top,
+        right: dropdownPos.right,
+        zIndex: 9999,
+      }}
+    >
+      <div className="px-4 py-3 border-b border-paper-border">
+        <p className="text-xs text-ink-faint truncate">{email}</p>
+        <p className="text-xs font-medium text-ink-muted capitalize mt-0.5">{plan} plan</p>
+      </div>
+
+      <div className="py-1">
+        {!isPro && (
+          <button
+            onClick={() => { setOpen(false); router.push('/dashboard/upgrade') }}
+            className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-ink-muted hover:bg-paper-warm hover:text-ink transition-colors text-left"
+          >
+            <ArrowUpCircle size={14} className="text-teal" />
+            Upgrade plan
+          </button>
+        )}
+
+        {!isFree && (
+          <button
+            onClick={() => { setOpen(false); setShowCancelModal(true) }}
+            className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-ink-muted hover:bg-paper-warm hover:text-ink transition-colors text-left"
+          >
+            <CreditCard size={14} />
+            Cancel subscription
+          </button>
+        )}
+
+        <button
+          onClick={toggle}
+          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-ink-muted hover:bg-paper-warm hover:text-ink transition-colors text-left"
+        >
+          {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
+          {theme === 'dark' ? 'Light mode' : 'Dark mode'}
+        </button>
+      </div>
+
+      <div className="border-t border-paper-border py-1">
+        <button
+          onClick={() => { setOpen(false); setShowCloseModal(true) }}
+          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-lobster-pale transition-colors text-left"
+          style={{ color: '#c93638' }}
+        >
+          <Trash2 size={14} />
+          Close account
+        </button>
+
+        <button
+          onClick={handleLogout}
+          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-ink-muted hover:bg-paper-warm hover:text-ink transition-colors text-left"
+        >
+          <LogOut size={14} />
+          Log out
+        </button>
+      </div>
+    </div>,
+    document.body
+  ) : null
+
   return (
-    <div className="relative" ref={dropdownRef}>
-      {/* Avatar trigger */}
+    <>
       <button
-        onClick={() => setOpen(prev => !prev)}
+        ref={avatarRef}
+        onClick={handleToggle}
         className="w-8 h-8 rounded-full bg-ink text-white flex items-center justify-center text-xs font-medium hover:opacity-80 transition-opacity focus:outline-none"
         aria-label="Account menu"
       >
         {initials}
       </button>
 
-      {/* Dropdown */}
-      {open && (
-        <div className="absolute right-0 top-full mt-2 w-64 bg-paper border border-paper-border rounded shadow-float z-[100] animate-slide-down overflow-hidden">
-
-          {/* Email label */}
-          <div className="px-4 py-3 border-b border-paper-border">
-            <p className="text-xs text-ink-faint truncate">{email}</p>
-            <p className="text-xs font-medium text-ink-muted capitalize mt-0.5">{plan} plan</p>
-          </div>
-
-          <div className="py-1">
-
-            {/* Upgrade — hidden on Pro */}
-            {!isPro && (
-              <button
-                onClick={() => { setOpen(false); router.push('/dashboard/upgrade') }}
-                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-ink-muted hover:bg-paper-warm hover:text-ink transition-colors text-left"
-              >
-                <ArrowUpCircle size={14} className="text-sage-DEFAULT" />
-                Upgrade plan
-              </button>
-            )}
-
-            {/* Cancel subscription — hidden on Free */}
-            {!isFree && (
-              <button
-                onClick={() => { setOpen(false); setShowCancelModal(true) }}
-                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-ink-muted hover:bg-paper-warm hover:text-ink transition-colors text-left"
-              >
-                <CreditCard size={14} />
-                Cancel subscription
-              </button>
-            )}
-
-            {/* Dark mode toggle */}
-            <button
-              onClick={toggle}
-              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-ink-muted hover:bg-paper-warm hover:text-ink transition-colors text-left"
-            >
-              {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
-              {theme === 'dark' ? 'Light mode' : 'Dark mode'}
-            </button>
-
-          </div>
-
-          <div className="border-t border-paper-border py-1">
-
-            {/* Close account */}
-            <button
-              onClick={() => { setOpen(false); setShowCloseModal(true) }}
-              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-lobster-pale transition-colors text-left"
-              style={{ color: '#c93638' }}
-            >
-              <Trash2 size={14} />
-              Close account
-            </button>
-
-            {/* Log out */}
-            <button
-              onClick={handleLogout}
-              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-ink-muted hover:bg-paper-warm hover:text-ink transition-colors text-left"
-            >
-              <LogOut size={14} />
-              Log out
-            </button>
-
-          </div>
-        </div>
-      )}
+      {dropdown}
 
       {/* Cancel subscription modal */}
       {showCancelModal && (
@@ -191,13 +212,13 @@ export function ProfileDropdown({ email, initials, plan }: ProfileDropdownProps)
           </div>
         </Modal>
       )}
-    </div>
+    </>
   )
 }
 
 function Modal({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
       <div className="relative bg-paper rounded-lg shadow-float w-full max-w-md p-6 animate-slide-up">
         {children}
