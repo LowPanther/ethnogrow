@@ -194,7 +194,7 @@ export default function ProjectDetailClient({ project, responses, existingReport
 // ─── Responses Tab ────────────────────────────────────────────────────────────
 
 function ResponsesTab({
-  responses,
+  responses: initialResponses,
   project,
   onViewReport,
 }: {
@@ -202,6 +202,7 @@ function ResponsesTab({
   project: Project
   onViewReport: () => void
 }) {
+  const [responses, setResponses] = useState(initialResponses)
   const [exporting, setExporting] = useState<'pdf' | 'csv' | null>(null)
 
   async function handleExportPDF() {
@@ -221,6 +222,21 @@ function ResponsesTab({
       setExporting(null)
     }
   }
+
+  async function updateFlagStatus(responseId: string, status: FlagStatus) {
+    const { createClient } = await import('@/lib/supabase-browser')
+    const supabase = createClient()
+    await supabase
+      .from('responses')
+      .update({ flag_status: status })
+      .eq('id', responseId)
+    setResponses(prev =>
+      prev.map(r => r.id === responseId ? { ...r, flag_status: status } : r)
+    )
+  }
+
+  const flaggedCount = responses.filter(r => r.flag_status === 'flagged').length
+  const excludedCount = responses.filter(r => r.flag_status === 'reviewed_excluded').length
 
   if (responses.length === 0) {
     return (
@@ -242,12 +258,21 @@ function ResponsesTab({
   return (
     <div className="max-w-7xl mx-auto px-8 py-10">
       <div className="flex items-center justify-between mb-8">
-        <h2
-          className="font-display font-light text-ink"
-          style={{ fontSize: '24px', letterSpacing: '-0.02em' }}
-        >
-          {responses.length} response{responses.length !== 1 ? 's' : ''}
-        </h2>
+        <div>
+          <h2
+            className="font-display font-light text-ink"
+            style={{ fontSize: '24px', letterSpacing: '-0.02em' }}
+          >
+            {responses.length} response{responses.length !== 1 ? 's' : ''}
+          </h2>
+          {(flaggedCount > 0 || excludedCount > 0) && (
+            <p className="text-xs text-ink-muted mt-1">
+              {flaggedCount > 0 && <span className="text-amber-600">{flaggedCount} flagged for review</span>}
+              {flaggedCount > 0 && excludedCount > 0 && <span className="mx-1.5">·</span>}
+              {excludedCount > 0 && <span>{excludedCount} excluded from analysis</span>}
+            </p>
+          )}
+        </div>
         <div className="flex items-center gap-2">
           <button
             onClick={handleExportPDF}
@@ -272,7 +297,8 @@ function ResponsesTab({
         </div>
       </div>
 
-      <div className="space-y-3">
+      {/* Per-question visualisations */}
+      <div className="space-y-3 mb-12">
         {project.questions.map((question, i) => (
           <div
             key={question.id}
@@ -298,6 +324,149 @@ function ResponsesTab({
           </div>
         ))}
       </div>
+
+      {/* Individual responses */}
+      <div>
+        <p className="text-xs font-medium tracking-widest uppercase text-ink-faint mb-4">
+          Individual responses
+        </p>
+        <div className="space-y-3">
+          {responses.map((r, i) => {
+            const isFlagged = r.flag_status === 'flagged'
+            const isExcluded = r.flag_status === 'reviewed_excluded'
+            const isReviewedIncluded = r.flag_status === 'reviewed_included'
+
+            return (
+              <div
+                key={r.id}
+                className="overflow-hidden"
+                style={{
+                  borderRadius: '4px',
+                  border: isFlagged
+                    ? '1px solid rgba(232,160,32,0.4)'
+                    : '0.5px solid rgba(15,15,15,0.08)',
+                  backgroundColor: isFlagged
+                    ? 'rgba(232,160,32,0.04)'
+                    : isExcluded
+                    ? 'rgba(15,15,15,0.02)'
+                    : 'rgba(15,15,15,0.03)',
+                  opacity: isExcluded ? 0.6 : 1,
+                }}
+              >
+                {/* Flag banner — only on flagged responses */}
+                {isFlagged && (
+                  <div
+                    className="flex items-start justify-between px-4 py-3 border-b"
+                    style={{ borderColor: 'rgba(232,160,32,0.25)', backgroundColor: 'rgba(232,160,32,0.07)' }}
+                  >
+                    <div className="flex items-start gap-2.5">
+                      <AlertTriangle size={14} className="text-amber-600 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-xs font-medium text-amber-700 mb-1">Flagged for review</p>
+                        <ul className="space-y-0.5">
+                          {(r.flag_reasons || []).map(reason => (
+                            <li key={reason} className="text-xs text-amber-600">
+                              — {FLAG_REASON_LABELS[reason]}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5 flex-shrink-0 ml-4">
+                      <button
+                        onClick={() => updateFlagStatus(r.id, 'reviewed_included')}
+                        className="flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded transition-colors"
+                        style={{ backgroundColor: 'rgba(15,15,15,0.06)', color: '#0F0F0F', borderRadius: '3px' }}
+                        title="Include in analysis"
+                      >
+                        <CheckCircle2 size={12} /> Include
+                      </button>
+                      <button
+                        onClick={() => updateFlagStatus(r.id, 'reviewed_excluded')}
+                        className="flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 transition-colors"
+                        style={{ backgroundColor: 'rgba(201,54,56,0.08)', color: '#c93638', borderRadius: '3px' }}
+                        title="Exclude from analysis"
+                      >
+                        <X size={12} /> Exclude
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Excluded banner */}
+                {isExcluded && (
+                  <div
+                    className="flex items-center justify-between px-4 py-2 border-b"
+                    style={{ borderColor: 'rgba(15,15,15,0.08)', backgroundColor: 'rgba(15,15,15,0.04)' }}
+                  >
+                    <span className="text-xs text-ink-faint">Excluded from analysis</span>
+                    <button
+                      onClick={() => updateFlagStatus(r.id, 'flagged')}
+                      className="text-xs text-ink-muted hover:text-ink transition-colors"
+                    >
+                      Undo
+                    </button>
+                  </div>
+                )}
+
+                {/* Reviewed + included banner */}
+                {isReviewedIncluded && (
+                  <div
+                    className="flex items-center justify-between px-4 py-2 border-b"
+                    style={{ borderColor: 'rgba(15,15,15,0.08)', backgroundColor: 'rgba(15,15,15,0.02)' }}
+                  >
+                    <span className="text-xs text-ink-faint flex items-center gap-1.5">
+                      <CheckCircle2 size={11} className="text-green-600" /> Reviewed — included in analysis
+                    </span>
+                    <button
+                      onClick={() => updateFlagStatus(r.id, 'flagged')}
+                      className="text-xs text-ink-muted hover:text-ink transition-colors"
+                    >
+                      Undo
+                    </button>
+                  </div>
+                )}
+
+                {/* Response content */}
+                <div className="p-4 space-y-2">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs font-mono text-ink-faint">
+                      #{String(i + 1).padStart(3, '0')}
+                    </span>
+                    <div className="flex items-center gap-3 text-xs text-ink-faint">
+                      {r.completion_time_seconds && (
+                        <span>{r.completion_time_seconds}s</span>
+                      )}
+                      <span>{new Date(r.submitted_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
+                    </div>
+                  </div>
+                  {r.responses.map((qr, j) => {
+                    const question = project.questions.find(q => q.id === qr.question_id)
+                    if (!question) return null
+                    return (
+                      <div key={j} className="text-xs">
+                        <span className="text-ink-muted">
+                          {question.text.slice(0, 60)}{question.text.length > 60 ? '…' : ''}:{' '}
+                        </span>
+                        <span className="text-ink font-medium">
+                          {qr.value === '__NA__'
+                            ? 'N/A'
+                            : Array.isArray(qr.value)
+                            ? qr.value.join(', ')
+                            : typeof qr.value === 'object' && qr.value !== null
+                            ? Object.entries(qr.value).filter(([, v]) => v).map(([k, v]) => `${k}: ${v}`).join(', ')
+                            : String(qr.value)
+                          }
+                        </span>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </div>
     </div>
   )
 }
@@ -318,12 +487,7 @@ function ShareTab({
   const isActive = project.status === 'active'
 
   return (
-    <div className="max-w-7xl mx-auto px-8 py-12">
-      <div className="grid grid-cols-[200px_1fr] gap-12 items-start">
-        <p className="text-xs font-medium tracking-widest uppercase text-ink-faint pt-1 sticky top-6">
-          Share
-        </p>
-        <div className="max-w-xl">
+    <div className="max-w-xl mx-auto px-8 py-12">
           <h2
             className="font-display font-light text-ink mb-2"
             style={{ fontSize: '28px', letterSpacing: '-0.02em', lineHeight: '1.2' }}
@@ -401,8 +565,6 @@ function ShareTab({
               ))}
             </ul>
           </div>
-        </div>
-      </div>
     </div>
   )
 }

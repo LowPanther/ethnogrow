@@ -1,8 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { Question, QuestionResponse, MultipleChoiceQuestion, ScaleQuestion, OpenTextQuestion, YesNoQuestion, NumericQuestion, NumericResponse } from '@/types'
-import { createClient } from '@/lib/supabase-browser'
+import { useState, useEffect, useRef } from 'react'
+import {
+  Question, QuestionResponse,
+  MultipleChoiceQuestion, ScaleQuestion, OpenTextQuestion,
+  YesNoQuestion, NumericQuestion, NumericResponse,
+  ContactDetailsQuestion, ContactDetailsResponse,
+} from '@/types'
 import { clsx } from 'clsx'
 import { ArrowRight, ArrowLeft, Check } from 'lucide-react'
 
@@ -23,6 +27,15 @@ function generateUUID(): string {
   })
 }
 
+async function hashEmail(email: string): Promise<string> {
+  const normalized = email.trim().toLowerCase()
+  const encoder = new TextEncoder()
+  const data = encoder.encode(normalized)
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data)
+  const hashArray = Array.from(new Uint8Array(hashBuffer))
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
+}
+
 export function ParticipantView({ projectId, title, description, questions }: ParticipantViewProps) {
   const [currentIndex, setCurrentIndex] = useState(-1)
   const [responses, setResponses] = useState<Map<string, QuestionResponse>>(new Map())
@@ -30,12 +43,26 @@ export function ParticipantView({ projectId, title, description, questions }: Pa
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [availableHeight, setAvailableHeight] = useState<number | null>(null)
+  const [participantEmail, setParticipantEmail] = useState('')
+  const [emailError, setEmailError] = useState<string | null>(null)
+  const [alreadySubmitted, setAlreadySubmitted] = useState(false)
   const sessionId = useState(() => generateUUID())[0]
+  const startedAt = useRef<number | null>(null)
 
   const total = questions.length
   const isWelcome = currentIndex === -1
   const isDone = currentIndex >= total
   const currentQuestion = questions[currentIndex]
+  const storageKey = `eg_submitted_${projectId}`
+
+  useEffect(() => {
+    // Check localStorage for prior submission
+    if (typeof window !== 'undefined') {
+      if (localStorage.getItem(storageKey)) {
+        setAlreadySubmitted(true)
+      }
+    }
+  }, [storageKey])
 
   useEffect(() => {
     function update() {
@@ -76,7 +103,14 @@ export function ParticipantView({ projectId, title, description, questions }: Pa
   }
 
   function canAdvance(): boolean {
-    if (isWelcome) return true
+    if (isWelcome) {
+      // Validate email before proceeding
+      if (!participantEmail.trim()) {
+        return false
+      }
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+      return emailRegex.test(participantEmail.trim())
+    }
     if (!currentQuestion) return false
     if (!currentQuestion.required) return true
     const resp = responses.get(currentQuestion.id)
@@ -93,12 +127,29 @@ export function ParticipantView({ projectId, title, description, questions }: Pa
       return true
     }
 
+    if (currentQuestion.type === 'contact_details') {
+      const cdQ = currentQuestion as ContactDetailsQuestion
+      const val = resp.value as ContactDetailsResponse
+      if (!cdQ.require_at_least_one) return true
+      // At least one field must be filled
+      return !!(val?.name?.trim() || val?.email?.trim() || val?.phone?.trim())
+    }
+
     if (typeof resp.value === 'string') return resp.value.trim().length > 0
     if (Array.isArray(resp.value)) return resp.value.length > 0
     return resp.value !== undefined && resp.value !== null
   }
 
   function advance() {
+    if (isWelcome) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+      if (!participantEmail.trim() || !emailRegex.test(participantEmail.trim())) {
+        setEmailError('Please enter a valid email address to continue.')
+        return
+      }
+      setEmailError(null)
+      startedAt.current = Date.now()
+    }
     if (!canAdvance()) return
     setCurrentIndex(prev => prev + 1)
   }
@@ -106,17 +157,46 @@ export function ParticipantView({ projectId, title, description, questions }: Pa
   async function handleSubmit() {
     setSubmitting(true)
     setError(null)
+
     try {
-      const supabase = createClient()
-      const { error } = await supabase.from('responses').insert({
-        project_id: projectId,
-        session_id: sessionId,
-        responses: Array.from(responses.values()),
+      const completionTime = startedAt.current
+        ? Math.round((Date.now() - startedAt.current) / 1000)
+        : undefined
+
+      const emailHash = participantEmail.trim()
+        ? await hashEmail(participantEmail)
+        : undefined
+
+      const res = await fetch('/api/responses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          project_id: projectId,
+          session_id: sessionId,
+          responses: Array.from(responses.values()),
+          completion_time_seconds: completionTime,
+          email_hash: emailHash,
+        }),
       })
-      if (error) throw error
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        if (data.error === 'duplicate') {
+          setAlreadySubmitted(true)
+          return
+        }
+        throw new Error(data.error || 'Submission failed')
+      }
+
+      // Set localStorage flag
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(storageKey, '1')
+      }
+
       setSubmitted(true)
-    } catch {
-      setError('Something went wrong. Please try again.')
+    } catch (err: any) {
+      setError(err.message || 'Something went wrong. Please try again.')
     } finally {
       setSubmitting(false)
     }
@@ -124,6 +204,28 @@ export function ParticipantView({ projectId, title, description, questions }: Pa
 
   const heightStyle = availableHeight ? { height: `${availableHeight}px` } : {}
   const safePadding = { paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom))' }
+
+  // ── Already submitted ──────────────────────────────────────────────────────
+
+  if (alreadySubmitted) {
+    return (
+      <div className="fixed inset-0 bg-paper flex flex-col items-center justify-center px-8 text-center participant-root" style={heightStyle}>
+        <div className="w-12 h-12 bg-ink rounded-full flex items-center justify-center mb-6">
+          <Check size={20} className="text-white" />
+        </div>
+        <h1
+          className="font-display font-light text-ink mb-3"
+          style={{ fontSize: '28px', letterSpacing: '-0.02em', lineHeight: '1.2' }}
+        >
+          Already submitted
+        </h1>
+        <p className="text-sm text-ink-muted max-w-xs leading-relaxed">
+          You've already completed this questionnaire. Each person can only submit once.
+        </p>
+        <p className="text-xs text-ink-faint mt-8">Ethnogrow</p>
+      </div>
+    )
+  }
 
   // ── Submitted ──────────────────────────────────────────────────────────────
 
@@ -142,7 +244,7 @@ export function ParticipantView({ projectId, title, description, questions }: Pa
         <p className="text-sm text-ink-muted max-w-xs leading-relaxed">
           Your responses have been submitted. Your insights help make this research meaningful.
         </p>
-        <p className="text-xs text-ink-faint mt-8" style={{ letterSpacing: '-0.01em' }}>Ethnogrow</p>
+        <p className="text-xs text-ink-faint mt-8">Ethnogrow</p>
       </div>
     )
   }
@@ -166,12 +268,42 @@ export function ParticipantView({ projectId, title, description, questions }: Pa
             {description && (
               <p className="text-sm text-ink-muted leading-relaxed mb-6 max-w-sm">{description}</p>
             )}
-            <div className="flex items-center gap-4 text-xs text-ink-faint">
+            <div className="flex items-center gap-4 text-xs text-ink-faint mb-10">
               <span>{total} question{total !== 1 ? 's' : ''}</span>
               <span>·</span>
               <span>~{Math.max(1, Math.round(total * 0.75))} min</span>
               <span>·</span>
               <span>Anonymous</span>
+            </div>
+
+            {/* Email gate */}
+            <div
+              className="p-5 mb-2"
+              style={{
+                backgroundColor: 'rgba(15,15,15,0.03)',
+                border: '0.5px solid rgba(15,15,15,0.1)',
+                borderRadius: '6px',
+              }}
+            >
+              <label className="block text-sm font-medium text-ink mb-1">
+                Your email address
+              </label>
+              <p className="text-xs text-ink-muted mb-3 leading-relaxed">
+                We use this to make sure each person only submits once.
+                It's never shared with the researcher or used for any other purpose.
+              </p>
+              <input
+                type="email"
+                value={participantEmail}
+                onChange={e => { setParticipantEmail(e.target.value); setEmailError(null) }}
+                placeholder="you@example.com"
+                className="input text-sm"
+                autoComplete="email"
+                inputMode="email"
+              />
+              {emailError && (
+                <p className="text-xs mt-2" style={{ color: '#c93638' }}>{emailError}</p>
+              )}
             </div>
           </div>
         </div>
@@ -179,7 +311,13 @@ export function ParticipantView({ projectId, title, description, questions }: Pa
           <div className="max-w-md mx-auto">
             <button
               onClick={advance}
-              className="btn-primary w-full justify-center py-4 text-base"
+              disabled={!participantEmail.trim()}
+              className={clsx(
+                'w-full flex items-center justify-center gap-2 py-4 text-base font-medium transition-all active:scale-95',
+                participantEmail.trim()
+                  ? 'bg-ink text-white'
+                  : 'bg-paper-mid text-ink-faint cursor-not-allowed'
+              )}
               style={{ borderRadius: '6px' }}
             >
               Begin <ArrowRight size={18} />
@@ -209,7 +347,7 @@ export function ParticipantView({ projectId, title, description, questions }: Pa
             You've answered all {total} question{total !== 1 ? 's' : ''}. Ready to submit?
           </p>
           {error && (
-            <p className="text-xs text-lobster-dark bg-lobster-pale border border-lobster/20 rounded px-3 py-2 mb-4 max-w-xs">{error}</p>
+            <p className="text-xs mb-4 max-w-xs px-3 py-2 rounded" style={{ color: '#c93638', backgroundColor: 'rgba(201,54,56,0.06)', border: '0.5px solid rgba(201,54,56,0.2)' }}>{error}</p>
           )}
           <button onClick={() => setCurrentIndex(total - 1)} className="btn-ghost text-sm">
             Review answers
@@ -220,7 +358,7 @@ export function ParticipantView({ projectId, title, description, questions }: Pa
             <button
               onClick={handleSubmit}
               disabled={submitting}
-              className="btn-primary w-full justify-center py-4 text-base"
+              className="bg-ink text-white w-full flex items-center justify-center gap-2 py-4 text-base font-medium transition-all active:scale-95"
               style={{ borderRadius: '6px' }}
             >
               {submitting ? 'Submitting…' : <>Submit responses <ArrowRight size={16} /></>}
@@ -238,6 +376,7 @@ export function ParticipantView({ projectId, title, description, questions }: Pa
   const ready = canAdvance()
   const showNA = (currentQuestion as any).allow_na === true
   const isTapOnly = currentQuestion.type === 'yes_no' || currentQuestion.type === 'scale'
+  const isScrollable = !isTapOnly
 
   return (
     <div className="fixed inset-0 bg-paper flex flex-col participant-root" style={heightStyle}>
@@ -257,10 +396,8 @@ export function ParticipantView({ projectId, title, description, questions }: Pa
         <div className="flex-1 flex flex-col px-8 pt-2">
           <div className="max-w-md mx-auto w-full flex flex-col h-full">
             <div className="flex-[2] flex flex-col justify-end pb-8">
-              <h2
-                className="font-display font-light text-ink leading-snug"
-                style={{ fontSize: '24px', letterSpacing: '-0.02em', lineHeight: '1.3' }}
-              >
+              <h2 className="font-display font-light text-ink leading-snug"
+                style={{ fontSize: '24px', letterSpacing: '-0.02em', lineHeight: '1.3' }}>
                 {currentQuestion.text}
               </h2>
             </div>
@@ -292,10 +429,8 @@ export function ParticipantView({ projectId, title, description, questions }: Pa
       ) : (
         <div className="flex-1 overflow-y-auto px-8 pt-2">
           <div className="max-w-md mx-auto pb-4">
-            <h2
-              className="font-display font-light text-ink mb-7 leading-snug"
-              style={{ fontSize: '24px', letterSpacing: '-0.02em', lineHeight: '1.3' }}
-            >
+            <h2 className="font-display font-light text-ink mb-7 leading-snug"
+              style={{ fontSize: '24px', letterSpacing: '-0.02em', lineHeight: '1.3' }}>
               {currentQuestion.text}
             </h2>
             <div className={clsx('transition-opacity duration-150', naActive && 'opacity-25 pointer-events-none')}>
@@ -320,8 +455,15 @@ export function ParticipantView({ projectId, title, description, questions }: Pa
                   onChange={v => setResponse(currentQuestion.id, v, 'numeric')}
                 />
               )}
+              {currentQuestion.type === 'contact_details' && (
+                <ContactDetailsInput
+                  question={currentQuestion as ContactDetailsQuestion}
+                  value={(response?.value as ContactDetailsResponse) || {}}
+                  onChange={v => setResponse(currentQuestion.id, v, 'contact_details')}
+                />
+              )}
             </div>
-            {showNA && (
+            {showNA && currentQuestion.type !== 'contact_details' && (
               <div className="mt-5">
                 <NAButton naActive={naActive} onToggle={() => setNA(currentQuestion.id, currentQuestion.type)} />
               </div>
@@ -337,7 +479,7 @@ export function ParticipantView({ projectId, title, description, questions }: Pa
             onClick={() => setCurrentIndex(prev => Math.max(-1, prev - 1))}
             disabled={currentIndex === 0}
             className={clsx(
-              'flex items-center gap-1.5 px-5 py-3.5 rounded text-sm font-medium transition-all active:scale-95',
+              'flex items-center gap-1.5 px-5 py-3.5 text-sm font-medium transition-all active:scale-95',
               'border border-paper-border text-ink-muted bg-paper',
               currentIndex === 0 && 'opacity-30 pointer-events-none'
             )}
@@ -350,9 +492,7 @@ export function ParticipantView({ projectId, title, description, questions }: Pa
             disabled={!ready}
             className={clsx(
               'flex-1 flex items-center justify-center gap-2 py-3.5 text-sm font-medium transition-all active:scale-95',
-              ready
-                ? 'bg-ink text-white'
-                : 'bg-paper-mid text-ink-faint cursor-not-allowed'
+              ready ? 'bg-ink text-white' : 'bg-paper-mid text-ink-faint cursor-not-allowed'
             )}
             style={{ borderRadius: '6px' }}
           >
@@ -361,7 +501,6 @@ export function ParticipantView({ projectId, title, description, questions }: Pa
           </button>
         </div>
       </div>
-
     </div>
   )
 }
@@ -375,9 +514,7 @@ function NAButton({ naActive, onToggle }: { naActive: boolean; onToggle: () => v
       className={clsx(
         'w-full flex items-center justify-center gap-2.5 py-3 px-4',
         'text-sm font-medium border transition-all duration-150 active:scale-95',
-        naActive
-          ? 'border-ink bg-ink text-white'
-          : 'border-paper-border bg-paper text-ink-muted'
+        naActive ? 'border-ink bg-ink text-white' : 'border-paper-border bg-paper text-ink-muted'
       )}
       style={{ borderRadius: '6px' }}
     >
@@ -501,9 +638,7 @@ function ScaleInput({ question, value, onChange }: {
       {is10 ? (
         <div className="grid grid-cols-5 gap-2.5">
           {steps.map(n => (
-            <button
-              key={n}
-              onClick={() => onChange(n)}
+            <button key={n} onClick={() => onChange(n)}
               className={clsx(
                 'aspect-square text-base font-mono font-medium border',
                 'transition-all duration-150 active:scale-95 flex items-center justify-center',
@@ -516,9 +651,7 @@ function ScaleInput({ question, value, onChange }: {
       ) : (
         <div className="flex gap-2.5">
           {steps.map(n => (
-            <button
-              key={n}
-              onClick={() => onChange(n)}
+            <button key={n} onClick={() => onChange(n)}
               className={clsx(
                 'flex-1 aspect-square text-lg font-mono font-medium border',
                 'transition-all duration-150 active:scale-95 flex items-center justify-center',
@@ -548,9 +681,7 @@ function YesNoInput({ question, value, onChange }: {
         { label: question.yes_label || 'Yes', val: true },
         { label: question.no_label || 'No', val: false },
       ].map(({ label, val }) => (
-        <button
-          key={label}
-          onClick={() => onChange(val)}
+        <button key={label} onClick={() => onChange(val)}
           className={clsx(
             'flex-1 py-7 text-lg font-medium border',
             'transition-all duration-150 active:scale-95',
@@ -564,9 +695,7 @@ function YesNoInput({ question, value, onChange }: {
 }
 
 function NumericInput({ question, value, onChange }: {
-  question: NumericQuestion
-  value: NumericResponse
-  onChange: (v: NumericResponse) => void
+  question: NumericQuestion; value: NumericResponse; onChange: (v: NumericResponse) => void
 }) {
   return (
     <div className="space-y-4">
@@ -616,3 +745,65 @@ function NumericInput({ question, value, onChange }: {
     </div>
   )
 }
+
+function ContactDetailsInput({ question, value, onChange }: {
+  question: ContactDetailsQuestion
+  value: ContactDetailsResponse
+  onChange: (v: ContactDetailsResponse) => void
+}) {
+  return (
+    <div className="space-y-4">
+      {question.collect_name && (
+        <div>
+          <label className="block text-sm text-ink-muted mb-2">
+            Full name
+            {!question.name_required && <span className="text-ink-faint ml-1">(optional)</span>}
+          </label>
+          <input
+            type="text"
+            value={value?.name || ''}
+            onChange={e => onChange({ ...value, name: e.target.value })}
+            placeholder="Your name"
+            className="input text-base"
+            autoComplete="name"
+          />
+        </div>
+      )}
+      {question.collect_email && (
+        <div>
+          <label className="block text-sm text-ink-muted mb-2">
+            Email address
+            {!question.email_required && <span className="text-ink-faint ml-1">(optional)</span>}
+          </label>
+          <input
+            type="email"
+            value={value?.email || ''}
+            onChange={e => onChange({ ...value, email: e.target.value })}
+            placeholder="you@example.com"
+            className="input text-base"
+            autoComplete="email"
+            inputMode="email"
+          />
+        </div>
+      )}
+      {question.collect_phone && (
+        <div>
+          <label className="block text-sm text-ink-muted mb-2">
+            Phone number
+            {!question.phone_required && <span className="text-ink-faint ml-1">(optional)</span>}
+          </label>
+          <input
+            type="tel"
+            value={value?.phone || ''}
+            onChange={e => onChange({ ...value, phone: e.target.value })}
+            placeholder="+27 00 000 0000"
+            className="input text-base"
+            autoComplete="tel"
+            inputMode="tel"
+          />
+        </div>
+      )}
+    </div>
+  )
+}
+

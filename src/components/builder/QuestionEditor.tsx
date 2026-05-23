@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Question, MultipleChoiceQuestion, ScaleQuestion, OpenTextQuestion, YesNoQuestion, NumericQuestion } from '@/types'
+import { Question, MultipleChoiceQuestion, ScaleQuestion, OpenTextQuestion, YesNoQuestion, NumericQuestion, ContactDetailsQuestion } from '@/types'
 import { getQuestionTypeMeta } from '@/lib/questions'
 import { clsx } from 'clsx'
 import { Trash2, Plus, GripVertical, ChevronDown, ChevronUp, ToggleLeft, ToggleRight } from 'lucide-react'
@@ -103,6 +103,9 @@ export function QuestionEditor({
           )}
           {question.type === 'numeric' && (
             <NumericSettings question={question as NumericQuestion} onUpdate={onUpdate} />
+          )}
+          {question.type === 'contact_details' && (
+            <ContactDetailsSettings question={question as ContactDetailsQuestion} onUpdate={onUpdate} />
           )}
 
           <div className="flex items-center justify-between pt-2 border-t border-paper-border">
@@ -467,6 +470,118 @@ function NumericSettings({ question, onUpdate }: { question: NumericQuestion; on
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+
+function ContactDetailsSettings({
+  question, onUpdate,
+}: {
+  question: ContactDetailsQuestion
+  onUpdate: (q: ContactDetailsQuestion) => void
+}) {
+  return (
+    <div className="space-y-4">
+
+      {/* PII warning */}
+      <div
+        className="flex items-start gap-3 p-3 text-xs leading-relaxed"
+        style={{
+          backgroundColor: 'rgba(232,160,32,0.08)',
+          border: '0.5px solid rgba(232,160,32,0.25)',
+          borderRadius: '4px',
+        }}
+      >
+        <span className="text-amber-signal flex-shrink-0 mt-0.5">⚠</span>
+        <span className="text-ink-muted">
+          This question collects personally identifiable information. Participants who decline
+          to share their details can still submit — you decide how to handle incomplete contact
+          responses when analysing your data.
+        </span>
+      </div>
+
+      {/* Field toggles */}
+      <div className="space-y-3">
+        <p className="text-xs font-medium text-ink-muted uppercase tracking-widest">Collect</p>
+
+        {([
+          { field: 'collect_name', requiredField: 'name_required', label: 'Full name' },
+          { field: 'collect_email', requiredField: 'email_required', label: 'Email address' },
+          { field: 'collect_phone', requiredField: 'phone_required', label: 'Phone number' },
+        ] as const).map(({ field, requiredField, label }) => (
+          <div key={field} className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-ink">{label}</span>
+              <button
+                onClick={e => {
+                  e.stopPropagation()
+                  const next = { ...question, [field]: !question[field] }
+                  // If turning off, also turn off required
+                  if (!next[field]) next[requiredField] = false
+                  onUpdate(next as ContactDetailsQuestion)
+                }}
+                className={clsx(
+                  'flex items-center gap-1.5 text-xs font-medium transition-colors',
+                  question[field] ? 'text-ink' : 'text-ink-faint'
+                )}
+              >
+                {question[field]
+                  ? <ToggleRight size={16} className="text-teal" />
+                  : <ToggleLeft size={16} />
+                }
+                {question[field] ? 'On' : 'Off'}
+              </button>
+            </div>
+
+            {question[field] && (
+              <div className="flex items-center justify-between pl-3 border-l-2 border-paper-border">
+                <span className="text-xs text-ink-muted">Required</span>
+                <button
+                  onClick={e => {
+                    e.stopPropagation()
+                    onUpdate({ ...question, [requiredField]: !question[requiredField] } as ContactDetailsQuestion)
+                  }}
+                  className={clsx(
+                    'flex items-center gap-1.5 text-xs font-medium transition-colors',
+                    question[requiredField] ? 'text-ink' : 'text-ink-faint'
+                  )}
+                >
+                  {question[requiredField]
+                    ? <ToggleRight size={16} className="text-teal" />
+                    : <ToggleLeft size={16} />
+                  }
+                  {question[requiredField] ? 'Yes' : 'No'}
+                </button>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* Require at least one toggle */}
+      <div className="flex items-center justify-between pt-2 border-t border-paper-border">
+        <div>
+          <span className="text-xs text-ink-muted">Require at least one field</span>
+          <p className="text-xs text-ink-faint mt-0.5">Participants who leave all fields blank cannot submit</p>
+        </div>
+        <button
+          onClick={e => {
+            e.stopPropagation()
+            onUpdate({ ...question, require_at_least_one: !question.require_at_least_one })
+          }}
+          className={clsx(
+            'flex items-center gap-1.5 text-xs font-medium transition-colors flex-shrink-0 ml-4',
+            question.require_at_least_one ? 'text-ink' : 'text-ink-faint'
+          )}
+        >
+          {question.require_at_least_one
+            ? <ToggleRight size={16} className="text-teal" />
+            : <ToggleLeft size={16} />
+          }
+          {question.require_at_least_one ? 'On' : 'Off'}
+        </button>
+      </div>
     </div>
   )
 }

@@ -1,4 +1,4 @@
-import { QuestionType, Question, MultipleChoiceQuestion, ScaleQuestion, OpenTextQuestion, YesNoQuestion, NumericQuestion } from '@/types'
+import { QuestionType, Question, MultipleChoiceQuestion, ScaleQuestion, OpenTextQuestion, YesNoQuestion, NumericQuestion, ContactDetailsQuestion } from '@/types'
 
 function generateUUID(): string {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
@@ -59,6 +59,14 @@ export const QUESTION_TYPES: {
     icon: '#',
     color: 'text-teal-600',
     bgColor: 'bg-teal-50',
+  },
+  {
+    type: 'contact_details',
+    label: 'Contact details',
+    description: 'Name, email, and/or phone number',
+    icon: '@',
+    color: 'text-pink-600',
+    bgColor: 'bg-pink-50',
   },
 ]
 
@@ -124,6 +132,21 @@ export function createQuestion(type: QuestionType, order: number): Question {
         text_required: false,
         text_placeholder: 'Please elaborate...',
       } as NumericQuestion
+
+    case 'contact_details':
+      return {
+        ...base,
+        type: 'contact_details',
+        text: 'Before you go — would you like to share your contact details?',
+        required: false,
+        collect_name: true,
+        collect_email: true,
+        collect_phone: false,
+        name_required: false,
+        email_required: false,
+        phone_required: false,
+        require_at_least_one: false,
+      } as ContactDetailsQuestion
   }
 }
 
@@ -139,6 +162,13 @@ export function validateQuestion(q: Question): string[] {
     if (mc.options.some(o => !o.trim())) errors.push('Options cannot be empty')
   }
 
+  if (q.type === 'contact_details') {
+    const cd = q as ContactDetailsQuestion
+    if (!cd.collect_name && !cd.collect_email && !cd.collect_phone) {
+      errors.push('At least one contact field must be enabled')
+    }
+  }
+
   return errors
 }
 
@@ -151,4 +181,61 @@ export function validateProject(title: string, questions: Question[]): string[] 
     qErrors.forEach(e => errors.push(`Question ${i + 1}: ${e}`))
   })
   return errors
+}
+
+// ─── Response quality flagging ────────────────────────────────────────────────
+
+import { ParticipantResponse, FlagReason, ScaleQuestion as SQ } from '@/types'
+
+export function detectFlags(
+  response: ParticipantResponse,
+  questions: Question[]
+): FlagReason[] {
+  const flags: FlagReason[] = []
+  const { responses, completion_time_seconds } = response
+
+  // 1. Completed too quickly
+  if (
+    completion_time_seconds !== undefined &&
+    completion_time_seconds < 30
+  ) {
+    flags.push('completed_too_quickly')
+  }
+
+  // 2. Open text responses too short
+  const openTextResponses = responses.filter(r => r.question_type === 'open_text')
+  const hasShortOpenText = openTextResponses.some(r => {
+    const val = r.value as string
+    return val && val !== '__NA__' && val.trim().length < 5
+  })
+  if (hasShortOpenText) flags.push('open_text_too_short')
+
+  // 3. Straight-lining on scale questions
+  const scaleResponses = responses.filter(
+    r => r.question_type === 'scale' && r.value !== '__NA__'
+  )
+  if (scaleResponses.length >= 3) {
+    const values = scaleResponses.map(r => r.value as number)
+    const allSame = values.every(v => v === values[0])
+    if (allSame) flags.push('straight_lining')
+  }
+
+  // 4. All N/A
+  const naAllowedQuestions = questions.filter(q => q.allow_na)
+  if (naAllowedQuestions.length >= 3) {
+    const naResponses = responses.filter(r => r.value === '__NA__')
+    if (naResponses.length === naAllowedQuestions.length) {
+      flags.push('all_na')
+    }
+  }
+
+  return flags
+}
+
+export const FLAG_REASON_LABELS: Record<FlagReason, string> = {
+  completed_too_quickly: 'Completed in under 30 seconds',
+  open_text_too_short:   'Open text response is very short',
+  straight_lining:       'Same scale value selected for every scale question',
+  all_na:                'Every applicable question was marked N/A',
+  duplicate_suspected:   'Possible duplicate submission',
 }
