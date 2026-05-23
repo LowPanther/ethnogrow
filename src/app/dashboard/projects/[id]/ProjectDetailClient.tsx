@@ -1,14 +1,15 @@
 'use client'
 
 import { useState } from 'react'
-import { Project, ParticipantResponse, Question } from '@/types'
+import { Project, ParticipantResponse, Question, FlagStatus } from '@/types'
 import { QuestionnaireBuilder } from '@/components/builder/QuestionnaireBuilder'
 import { AIReport } from '@/components/AIReport'
 import { QuestionVisualisation } from '@/components/QuestionVisualisation'
 import { clsx } from 'clsx'
-import { Edit3, Users, Share2, Copy, CheckCheck, ExternalLink, Sparkles, Download } from 'lucide-react'
+import { Edit3, Users, Share2, Copy, CheckCheck, ExternalLink, Sparkles, Download, AlertTriangle, CheckCircle2, X } from 'lucide-react'
 import { UsageIndicator } from '@/components/UsageIndicator'
 import { exportResponsesPDF, exportResponsesCSV } from '@/lib/exportUtils'
+import { FLAG_REASON_LABELS } from '@/lib/questions'
 
 type Tab = 'build' | 'responses' | 'report' | 'share'
 
