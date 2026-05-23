@@ -177,8 +177,7 @@ function ProjectCard({
 
   return (
     <div
-      className={clsx('p-6 group relative transition-colors', isArchived && 'opacity-50')}
-      style={{ backgroundColor: 'rgba(15,15,15,0.03)', borderRadius: '4px' }}
+      className={clsx('tint-card p-6 group relative', isArchived && 'opacity-50')}
     >
       <div className="flex items-center justify-between mb-4">
         <span className={clsx('flex items-center gap-1.5 text-xs font-medium', statusStyle.text)}>

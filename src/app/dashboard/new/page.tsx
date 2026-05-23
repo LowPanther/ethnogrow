@@ -41,8 +41,7 @@ export default function NewProjectPage() {
           <div className="grid grid-cols-2 gap-4">
             <button
               onClick={() => setMode('generate')}
-              className="p-8 text-left border border-paper-border hover:border-ink/20 hover:bg-paper-warm transition-colors"
-              style={{ borderRadius: '4px' }}
+              className="tint-card p-8 text-left"
             >
               <div
                 className="w-9 h-9 flex items-center justify-center mb-5"
@@ -63,8 +62,7 @@ export default function NewProjectPage() {
 
             <button
               onClick={() => setMode('build')}
-              className="p-8 text-left border border-paper-border hover:border-ink/20 hover:bg-paper-warm transition-colors"
-              style={{ borderRadius: '4px' }}
+              className="tint-card p-8 text-left"
             >
               <div
                 className="w-9 h-9 flex items-center justify-center mb-5"

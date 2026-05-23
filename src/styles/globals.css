@@ -256,3 +256,24 @@
 [data-theme="dark"] ::-webkit-scrollbar-thumb {
   background-color: #2E2E2C;
 }
+
+/* ── Tint card hover ─────────────────────────────────────────── */
+/* Used on project cards, new project option cards, etc.          */
+.tint-card {
+  background-color: rgba(15,15,15,0.03);
+  border: 0.5px solid rgba(15,15,15,0.08);
+  border-radius: 4px;
+  transition: background-color 0.15s, border-color 0.15s;
+}
+.tint-card:hover {
+  background-color: rgba(15,15,15,0.06);
+  border-color: rgba(15,15,15,0.16);
+}
+[data-theme="dark"] .tint-card {
+  background-color: rgba(250,250,248,0.03);
+  border-color: rgba(250,250,248,0.08);
+}
+[data-theme="dark"] .tint-card:hover {
+  background-color: rgba(250,250,248,0.06);
+  border-color: rgba(250,250,248,0.16);
+}
