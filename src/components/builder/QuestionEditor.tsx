@@ -29,9 +29,14 @@ export function QuestionEditor({
   return (
     <div
       className={clsx(
-        'card transition-all duration-200 overflow-hidden',
-        isActive ? 'ring-2 ring-ink/10 shadow-lifted' : 'hover:shadow-card'
+        'transition-all duration-200 overflow-hidden',
+        isActive ? 'ring-1 ring-ink/10' : ''
       )}
+      style={{
+        backgroundColor: isActive ? 'rgba(15,15,15,0.04)' : 'rgba(15,15,15,0.03)',
+        borderRadius: '4px',
+        border: isActive ? '0.5px solid rgba(15,15,15,0.15)' : '0.5px solid rgba(15,15,15,0.08)',
+      }}
       onClick={onFocus}
     >
       <div className="flex items-start gap-3 p-4">
@@ -51,7 +56,7 @@ export function QuestionEditor({
             type="text"
             value={question.text}
             onChange={e => update({ text: e.target.value })}
-            placeholder="Write your question here..."
+            placeholder="Write your question here…"
             className={clsx(
               'w-full text-sm font-medium text-ink bg-transparent outline-none',
               'placeholder:text-ink-faint leading-snug',
@@ -110,7 +115,7 @@ export function QuestionEditor({
               )}
             >
               {question.required
-                ? <ToggleRight size={16} className="text-sage-DEFAULT" />
+                ? <ToggleRight size={16} className="text-teal" />
                 : <ToggleLeft size={16} />
               }
               {question.required ? 'Yes' : 'No'}
@@ -130,7 +135,7 @@ export function QuestionEditor({
               )}
             >
               {question.allow_na
-                ? <ToggleRight size={16} className="text-sage-DEFAULT" />
+                ? <ToggleRight size={16} className="text-teal" />
                 : <ToggleLeft size={16} />
               }
               {question.allow_na ? 'On' : 'Off'}
@@ -245,7 +250,7 @@ function MultipleChoiceSettings({
           )}
         >
           {question.allow_multiple
-            ? <ToggleRight size={16} className="text-sage-DEFAULT" />
+            ? <ToggleRight size={16} className="text-teal" />
             : <ToggleLeft size={16} />
           }
           {question.allow_multiple ? 'Yes' : 'No'}
@@ -268,11 +273,12 @@ function ScaleSettings({ question, onUpdate }: { question: ScaleQuestion; onUpda
               key={max}
               onClick={e => { e.stopPropagation(); onUpdate({ ...question, max }) }}
               className={clsx(
-                'px-3 py-1.5 text-sm rounded border transition-colors',
+                'px-3 py-1.5 text-sm border transition-colors',
                 question.max === max
-                  ? 'border-ink bg-ink text-[#FAFAF8]'
+                  ? 'border-ink bg-ink text-white'
                   : 'border-paper-border text-ink-muted hover:border-ink/30'
               )}
+              style={{ borderRadius: '3px' }}
             >
               1 – {max}
             </button>
@@ -319,7 +325,7 @@ function OpenTextSettings({ question, onUpdate }: { question: OpenTextQuestion; 
           value={question.placeholder || ''}
           onChange={e => onUpdate({ ...question, placeholder: e.target.value })}
           className="input py-1.5 text-sm"
-          placeholder="Type your answer here..."
+          placeholder="Type your answer here…"
           onClick={e => e.stopPropagation()}
         />
       </div>
@@ -399,7 +405,6 @@ function NumericSettings({ question, onUpdate }: { question: NumericQuestion; on
         </div>
       </div>
 
-      {/* Elaboration field toggle */}
       <div className="flex items-center justify-between pt-2 border-t border-paper-border">
         <div>
           <span className="text-xs text-ink-muted">Include elaboration field</span>
@@ -413,14 +418,13 @@ function NumericSettings({ question, onUpdate }: { question: NumericQuestion; on
           )}
         >
           {question.show_text_field
-            ? <ToggleRight size={16} className="text-sage-DEFAULT" />
+            ? <ToggleRight size={16} className="text-teal" />
             : <ToggleLeft size={16} />
           }
           {question.show_text_field ? 'On' : 'Off'}
         </button>
       </div>
 
-      {/* Elaboration field options — only shown when toggled on */}
       {question.show_text_field && (
         <div className="space-y-2 pl-3 border-l-2 border-paper-border animate-slide-down">
           <div>
@@ -441,7 +445,7 @@ function NumericSettings({ question, onUpdate }: { question: NumericQuestion; on
               value={question.text_placeholder || ''}
               onChange={e => onUpdate({ ...question, text_placeholder: e.target.value })}
               className="input py-1.5 text-sm"
-              placeholder="Please elaborate..."
+              placeholder="Please elaborate…"
               onClick={e => e.stopPropagation()}
             />
           </div>
@@ -455,7 +459,7 @@ function NumericSettings({ question, onUpdate }: { question: NumericQuestion; on
               )}
             >
               {question.text_required
-                ? <ToggleRight size={16} className="text-sage-DEFAULT" />
+                ? <ToggleRight size={16} className="text-teal" />
                 : <ToggleLeft size={16} />
               }
               {question.text_required ? 'Yes' : 'No'}

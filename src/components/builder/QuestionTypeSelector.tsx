@@ -16,15 +16,18 @@ export function QuestionTypeSelector({ onSelect }: QuestionTypeSelectorProps) {
           key={type}
           onClick={() => onSelect(type)}
           className={clsx(
-            'flex items-start gap-3 p-3 rounded-lg border border-paper-border text-left',
-            'transition-all duration-150 hover:border-ink/20 hover:shadow-card',
-            'active:scale-[0.98] group'
+            'flex items-start gap-3 p-3 text-left',
+            'border border-paper-border transition-all duration-150',
+            'hover:border-ink/20 hover:bg-paper-warm active:scale-[0.98]'
           )}
+          style={{ borderRadius: '4px' }}
         >
           <span className={clsx(
-            'flex-shrink-0 w-7 h-7 rounded flex items-center justify-center text-sm font-mono mt-0.5',
+            'flex-shrink-0 w-7 h-7 flex items-center justify-center text-sm font-mono mt-0.5',
             bgColor, color
-          )}>
+          )}
+          style={{ borderRadius: '3px' }}
+          >
             {icon}
           </span>
           <div>

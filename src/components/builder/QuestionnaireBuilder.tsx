@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect, useImperativeHandle, forwardRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Question, QuestionType, Project } from '@/types'
 import { createQuestion, validateProject, QUESTION_TYPES, getQuestionTypeMeta } from '@/lib/questions'
 import { QuestionEditor } from './QuestionEditor'
@@ -22,7 +22,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { Plus, Sparkles, Save, Share2, Eye, ChevronDown, Layers, CheckCircle2, AlertCircle } from 'lucide-react'
+import { Plus, Sparkles, Save, Share2, Eye, ChevronDown, CheckCircle2, AlertCircle } from 'lucide-react'
 
 function SortableQuestion({
   question, index, isActive, onUpdate, onDelete, onFocus,
@@ -181,32 +181,49 @@ export function QuestionnaireBuilder({ initialProject, onSaved, onPublished, pen
 
   return (
     <div className="min-h-screen bg-paper">
+
+      {/* Sub-header */}
       <header className="sticky top-0 z-40 bg-paper/90 backdrop-blur-sm border-b border-paper-border">
-        <div className="max-w-7xl mx-auto px-8 h-14 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <a href="/dashboard" className="text-ink-muted hover:text-ink transition-colors">
-              <Layers size={16} />
+        <div className="max-w-7xl mx-auto px-8 h-12 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-2 text-sm">
+            <a
+              href="/dashboard"
+              className="text-ink-muted hover:text-ink transition-colors"
+              style={{ letterSpacing: '-0.01em' }}
+            >
+              Projects
             </a>
             <span className="text-ink-faint">/</span>
-            <span className="text-sm text-ink-muted font-medium">{title || 'Untitled project'}</span>
+            <span className="text-ink-muted truncate max-w-xs">
+              {title || 'Untitled project'}
+            </span>
           </div>
-          <div className="flex items-center gap-2 relative">
+
+          <div className="flex items-center gap-2">
             {saveState === 'saved' && (
-              <span className="flex items-center gap-1.5 text-xs text-sage-DEFAULT animate-fade-in">
-                <CheckCircle2 size={13} /> Saved
+              <span className="flex items-center gap-1.5 text-xs text-green-700 animate-fade-in">
+                <CheckCircle2 size={12} /> Saved
               </span>
             )}
             {saveState === 'error' && (
               <span className="flex items-center gap-1.5 text-xs text-red-500 animate-fade-in">
-                <AlertCircle size={13} /> Error saving
+                <AlertCircle size={12} /> Error saving
               </span>
             )}
-            <button onClick={() => handleSave('draft')} disabled={saveState === 'saving'} className="btn-secondary text-xs py-1.5 px-3">
-              <Save size={13} />
-              {saveState === 'saving' ? 'Saving...' : 'Save draft'}
+            <button
+              onClick={() => handleSave('draft')}
+              disabled={saveState === 'saving'}
+              className="btn-secondary text-xs py-1.5 px-3"
+            >
+              <Save size={12} />
+              {saveState === 'saving' ? 'Saving…' : 'Save draft'}
             </button>
-            <button onClick={() => handleSave('active')} disabled={!isValid || saveState === 'saving'} className="btn-primary text-xs py-1.5 px-3">
-              <Share2 size={13} />
+            <button
+              onClick={() => handleSave('active')}
+              disabled={!isValid || saveState === 'saving'}
+              className="btn-primary text-xs py-1.5 px-3"
+            >
+              <Share2 size={12} />
               Publish & share
             </button>
           </div>
@@ -214,7 +231,9 @@ export function QuestionnaireBuilder({ initialProject, onSaved, onPublished, pen
       </header>
 
       <div className="max-w-7xl mx-auto px-8 py-10">
-        <div className="grid grid-cols-[1fr_280px] gap-8 items-start">
+        <div className="grid grid-cols-[1fr_260px] gap-10 items-start">
+
+          {/* Main content */}
           <div className="space-y-6">
             <div className="space-y-3">
               <input
@@ -223,10 +242,11 @@ export function QuestionnaireBuilder({ initialProject, onSaved, onPublished, pen
                 onChange={e => setTitle(e.target.value)}
                 placeholder="Project title"
                 className={clsx(
-                  'w-full text-2xl font-display font-semibold text-ink bg-transparent',
-                  'outline-none border-b-2 border-transparent focus:border-ink/20 pb-1',
-                  'placeholder:text-ink-faint/60 transition-colors'
+                  'w-full font-display font-light text-ink bg-transparent',
+                  'outline-none border-b border-transparent focus:border-ink/20 pb-2',
+                  'placeholder:text-ink-faint transition-colors'
                 )}
+                style={{ fontSize: '28px', letterSpacing: '-0.025em', lineHeight: '1.2' }}
               />
               <textarea
                 value={description}
@@ -242,7 +262,9 @@ export function QuestionnaireBuilder({ initialProject, onSaved, onPublished, pen
             </div>
 
             {saveError && (
-              <div className="flex items-center gap-2 px-4 py-3 bg-red-50 border border-red-100 rounded-lg text-sm text-red-700 animate-slide-down">
+              <div className="flex items-center gap-2 px-4 py-3 rounded text-sm text-red-700 animate-slide-down"
+                style={{ backgroundColor: 'rgba(239,68,68,0.06)', border: '0.5px solid rgba(239,68,68,0.2)' }}
+              >
                 <AlertCircle size={14} /> {saveError}
               </div>
             )}
@@ -274,21 +296,25 @@ export function QuestionnaireBuilder({ initialProject, onSaved, onPublished, pen
                 <button
                   onClick={openTypeMenu}
                   className={clsx(
-                    'w-full flex items-center justify-center gap-2 py-3 rounded-lg',
-                    'border-2 border-dashed text-sm font-medium transition-all duration-150',
+                    'w-full flex items-center justify-center gap-2 py-3',
+                    'border border-dashed text-sm font-medium transition-all duration-150',
                     showTypeMenu
                       ? 'border-ink/20 bg-paper-warm text-ink'
                       : 'border-paper-border text-ink-muted hover:border-ink/20 hover:text-ink hover:bg-paper-warm'
                   )}
+                  style={{ borderRadius: '4px' }}
                 >
-                  <Plus size={15} />
+                  <Plus size={14} />
                   Add question
                   <ChevronDown size={13} className={clsx('transition-transform', showTypeMenu && 'rotate-180')} />
                 </button>
 
                 {showTypeMenu && (
-                  <div className="mt-2 p-3 card shadow-float z-30 animate-slide-down">
-                    <p className="text-xs text-ink-faint font-medium uppercase tracking-wide mb-3">Choose question type</p>
+                  <div
+                    className="mt-2 p-4 shadow-float z-30 animate-slide-down"
+                    style={{ backgroundColor: 'white', border: '0.5px solid rgba(15,15,15,0.12)', borderRadius: '4px' }}
+                  >
+                    <p className="text-xs text-ink-faint font-medium uppercase tracking-widest mb-3">Choose question type</p>
                     <QuestionTypeSelector onSelect={addQuestion} />
                   </div>
                 )}
@@ -296,9 +322,15 @@ export function QuestionnaireBuilder({ initialProject, onSaved, onPublished, pen
             )}
           </div>
 
-          <aside className="space-y-4 sticky top-[72px]">
-            <div className="card p-4 space-y-3">
-              <h3 className="text-xs font-medium text-ink-muted uppercase tracking-wide">Questionnaire</h3>
+          {/* Sidebar */}
+          <aside className="space-y-3 sticky top-[60px]">
+
+            {/* Stats */}
+            <div
+              className="p-4 space-y-3"
+              style={{ backgroundColor: 'rgba(15,15,15,0.03)', borderRadius: '4px' }}
+            >
+              <p className="text-xs font-medium tracking-widest uppercase text-ink-faint">Questionnaire</p>
               <div className="space-y-2">
                 <Stat label="Questions" value={questionCount} />
                 <Stat label="Required" value={questions.filter(q => q.required).length} />
@@ -313,7 +345,7 @@ export function QuestionnaireBuilder({ initialProject, onSaved, onPublished, pen
                         <span className={clsx('flex items-center gap-1.5 text-xs', meta.color)}>
                           <span className="font-mono">{icon}</span>{label}
                         </span>
-                        <span className="text-xs font-mono font-medium text-ink-muted">{count}</span>
+                        <span className="text-xs font-mono text-ink-muted">{count}</span>
                       </div>
                     )
                   })}
@@ -321,14 +353,19 @@ export function QuestionnaireBuilder({ initialProject, onSaved, onPublished, pen
               )}
             </div>
 
-            <div className="card p-4 bg-sage-pale border-sage-pale space-y-2">
+            {/* Research tip */}
+            <div
+              className="p-4 space-y-2"
+              style={{ backgroundColor: 'rgba(15,15,15,0.03)', borderRadius: '4px' }}
+            >
               <div className="flex items-center gap-1.5">
-                <Sparkles size={13} className="text-sage-DEFAULT" />
-                <span className="text-xs font-medium text-sage-DEFAULT uppercase tracking-wide">Research tip</span>
+                <Sparkles size={12} className="text-ink-faint" />
+                <span className="text-xs font-medium text-ink-faint uppercase tracking-widest">Research tip</span>
               </div>
-              <p className="text-xs text-ink-soft leading-relaxed">{getTip(questionCount)}</p>
+              <p className="text-xs text-ink-muted leading-relaxed">{getTip(questionCount)}</p>
             </div>
 
+            {/* Preview link */}
             {questionCount > 0 && initialProject?.id && (
               <a
                 href={`/p/${(initialProject as any).participant_token}`}
@@ -336,7 +373,7 @@ export function QuestionnaireBuilder({ initialProject, onSaved, onPublished, pen
                 rel="noopener noreferrer"
                 className="w-full btn-secondary justify-center text-xs"
               >
-                <Eye size={13} />
+                <Eye size={12} />
                 Preview participant view
               </a>
             )}
@@ -350,13 +387,18 @@ export function QuestionnaireBuilder({ initialProject, onSaved, onPublished, pen
 function EmptyState({ onAddQuestion }: { onAddQuestion: (type: QuestionType) => void }) {
   return (
     <div className="flex flex-col items-center justify-center py-16 text-center">
-      <div className="w-16 h-16 rounded-xl bg-paper-warm border border-paper-border flex items-center justify-center mb-4 text-2xl">✦</div>
-      <h3 className="font-display font-medium text-ink mb-1">Start building</h3>
-      <p className="text-sm text-ink-muted mb-6 max-w-xs leading-relaxed">
+      <p className="text-2xl text-ink-faint mb-5">✦</p>
+      <h3
+        className="font-display font-light text-ink mb-2"
+        style={{ fontSize: '20px', letterSpacing: '-0.02em' }}
+      >
+        Start building
+      </h3>
+      <p className="text-sm text-ink-muted mb-8 max-w-xs leading-relaxed">
         Add your first question. You can drag to reorder, and each type has its own settings.
       </p>
       <div className="w-full max-w-sm">
-        <p className="text-xs text-ink-faint font-medium uppercase tracking-wide mb-3">Choose a question type</p>
+        <p className="text-xs text-ink-faint font-medium uppercase tracking-widest mb-3">Choose a question type</p>
         <QuestionTypeSelector onSelect={onAddQuestion} />
       </div>
     </div>
@@ -367,7 +409,7 @@ function Stat({ label, value }: { label: string; value: number | string }) {
   return (
     <div className="flex items-center justify-between">
       <span className="text-xs text-ink-muted">{label}</span>
-      <span className="text-xs font-mono font-medium text-ink">{value}</span>
+      <span className="text-xs font-mono text-ink">{value}</span>
     </div>
   )
 }
