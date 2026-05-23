@@ -100,7 +100,7 @@ export default function ProjectDetailClient({ project, responses, existingReport
       return
     }
 
-    const unique = [...new Set(entries)]
+    const unique = Array.from(new Set(entries))
 
     try {
       const res = await fetch('/api/projects', {
