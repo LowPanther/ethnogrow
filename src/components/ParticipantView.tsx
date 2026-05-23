@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { Question, QuestionResponse, MultipleChoiceQuestion, ScaleQuestion, OpenTextQuestion, YesNoQuestion, NumericQuestion, NumericResponse } from '@/types'
 import { createClient } from '@/lib/supabase-browser'
 import { clsx } from 'clsx'
-import { ArrowRight, ArrowLeft, Check, Layers } from 'lucide-react'
+import { ArrowRight, ArrowLeft, Check } from 'lucide-react'
 
 interface ParticipantViewProps {
   projectId: string
@@ -83,7 +83,6 @@ export function ParticipantView({ projectId, title, description, questions }: Pa
     if (!resp) return false
     if (resp.value === NA_VALUE) return true
 
-    // Numeric: number is required, text may also be required
     if (currentQuestion.type === 'numeric') {
       const numQ = currentQuestion as NumericQuestion
       const val = resp.value as NumericResponse
@@ -126,32 +125,48 @@ export function ParticipantView({ projectId, title, description, questions }: Pa
   const heightStyle = availableHeight ? { height: `${availableHeight}px` } : {}
   const safePadding = { paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom))' }
 
+  // ── Submitted ──────────────────────────────────────────────────────────────
+
   if (submitted) {
     return (
-      <div className="fixed inset-0 bg-paper flex flex-col items-center justify-center px-6 text-center" style={heightStyle}>
-        <div className="w-16 h-16 bg-sage-pale rounded-2xl flex items-center justify-center mb-5 text-2xl">✦</div>
-        <h1 className="font-display font-semibold text-ink text-2xl mb-2">Thank you</h1>
+      <div className="fixed inset-0 bg-paper flex flex-col items-center justify-center px-8 text-center participant-root" style={heightStyle}>
+        <div className="w-12 h-12 bg-ink rounded-full flex items-center justify-center mb-6">
+          <Check size={20} className="text-white" />
+        </div>
+        <h1
+          className="font-display font-light text-ink mb-3"
+          style={{ fontSize: '28px', letterSpacing: '-0.02em', lineHeight: '1.2' }}
+        >
+          Thank you
+        </h1>
         <p className="text-sm text-ink-muted max-w-xs leading-relaxed">
           Your responses have been submitted. Your insights help make this research meaningful.
         </p>
+        <p className="text-xs text-ink-faint mt-8" style={{ letterSpacing: '-0.01em' }}>Ethnogrow</p>
       </div>
     )
   }
 
+  // ── Welcome ────────────────────────────────────────────────────────────────
+
   if (isWelcome) {
     return (
-      <div className="fixed inset-0 bg-paper flex flex-col" style={heightStyle}>
-        <div className="flex-1 flex flex-col items-center justify-center px-6">
-          <div className="w-full max-w-md">
-            <div className="flex items-center gap-2 justify-center mb-10 opacity-40">
-              <Layers size={14} />
-              <span className="text-xs font-medium tracking-tight">ethnogrow</span>
-            </div>
-            <h1 className="font-display font-semibold text-ink text-2xl sm:text-3xl text-center mb-3 leading-tight">{title}</h1>
+      <div className="fixed inset-0 bg-paper flex flex-col participant-root" style={heightStyle}>
+        <div className="flex-1 flex flex-col justify-center px-8">
+          <div className="w-full max-w-md mx-auto">
+            <p className="text-xs font-medium tracking-widest uppercase text-ink-faint mb-8">
+              Ethnogrow
+            </p>
+            <h1
+              className="font-display font-light text-ink mb-4 leading-tight"
+              style={{ fontSize: '32px', letterSpacing: '-0.025em', lineHeight: '1.15' }}
+            >
+              {title}
+            </h1>
             {description && (
-              <p className="text-sm text-ink-muted text-center mb-6 leading-relaxed max-w-sm mx-auto">{description}</p>
+              <p className="text-sm text-ink-muted leading-relaxed mb-6 max-w-sm">{description}</p>
             )}
-            <div className="flex items-center justify-center gap-4 text-xs text-ink-faint flex-wrap">
+            <div className="flex items-center gap-4 text-xs text-ink-faint">
               <span>{total} question{total !== 1 ? 's' : ''}</span>
               <span>·</span>
               <span>~{Math.max(1, Math.round(total * 0.75))} min</span>
@@ -160,70 +175,92 @@ export function ParticipantView({ projectId, title, description, questions }: Pa
             </div>
           </div>
         </div>
-        <div className="px-6 py-5" style={safePadding}>
-          <button onClick={advance} className="btn-primary w-full justify-center py-4 text-base rounded-xl">
-            Begin <ArrowRight size={18} />
-          </button>
+        <div className="px-8 py-5" style={safePadding}>
+          <div className="max-w-md mx-auto">
+            <button
+              onClick={advance}
+              className="btn-primary w-full justify-center py-4 text-base"
+              style={{ borderRadius: '6px' }}
+            >
+              Begin <ArrowRight size={18} />
+            </button>
+          </div>
         </div>
       </div>
     )
   }
+
+  // ── Review / submit ────────────────────────────────────────────────────────
 
   if (isDone) {
     return (
-      <div className="fixed inset-0 bg-paper flex flex-col" style={heightStyle}>
-        <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
-          <div className="w-14 h-14 bg-ink rounded-2xl flex items-center justify-center mx-auto mb-5">
-            <Check size={24} className="text-[#FAFAF8]" />
+      <div className="fixed inset-0 bg-paper flex flex-col participant-root" style={heightStyle}>
+        <div className="flex-1 flex flex-col items-center justify-center px-8 text-center">
+          <div className="w-12 h-12 bg-ink rounded-full flex items-center justify-center mb-6">
+            <Check size={20} className="text-white" />
           </div>
-          <h2 className="font-display font-semibold text-ink text-2xl mb-2">All done</h2>
-          <p className="text-sm text-ink-muted mb-4 max-w-xs mx-auto leading-relaxed">
+          <h2
+            className="font-display font-light text-ink mb-3"
+            style={{ fontSize: '28px', letterSpacing: '-0.02em' }}
+          >
+            All done
+          </h2>
+          <p className="text-sm text-ink-muted mb-6 max-w-xs mx-auto leading-relaxed">
             You've answered all {total} question{total !== 1 ? 's' : ''}. Ready to submit?
           </p>
           {error && (
-            <p className="text-xs text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2 mb-3 max-w-xs">{error}</p>
+            <p className="text-xs text-lobster-dark bg-lobster-pale border border-lobster/20 rounded px-3 py-2 mb-4 max-w-xs">{error}</p>
           )}
-          <button onClick={() => setCurrentIndex(total - 1)} className="btn-ghost text-sm">Review answers</button>
-        </div>
-        <div className="px-6 py-5" style={safePadding}>
-          <button onClick={handleSubmit} disabled={submitting} className="btn-primary w-full justify-center py-4 text-base rounded-xl">
-            {submitting ? 'Submitting...' : 'Submit responses'}
-            {!submitting && <ArrowRight size={16} />}
+          <button onClick={() => setCurrentIndex(total - 1)} className="btn-ghost text-sm">
+            Review answers
           </button>
+        </div>
+        <div className="px-8 py-5" style={safePadding}>
+          <div className="max-w-md mx-auto">
+            <button
+              onClick={handleSubmit}
+              disabled={submitting}
+              className="btn-primary w-full justify-center py-4 text-base"
+              style={{ borderRadius: '6px' }}
+            >
+              {submitting ? 'Submitting…' : <>Submit responses <ArrowRight size={16} /></>}
+            </button>
+          </div>
         </div>
       </div>
     )
   }
 
-  // ── Question view ──────────────────────────────────────────
+  // ── Question view ──────────────────────────────────────────────────────────
 
   const response = responses.get(currentQuestion.id)
   const naActive = isNA(currentQuestion.id)
   const ready = canAdvance()
   const showNA = (currentQuestion as any).allow_na === true
-
-  // Numeric is scrollable like open_text; tap-only only for yes_no and scale
   const isTapOnly = currentQuestion.type === 'yes_no' || currentQuestion.type === 'scale'
 
   return (
-    <div className="fixed inset-0 bg-paper flex flex-col" style={heightStyle}>
+    <div className="fixed inset-0 bg-paper flex flex-col participant-root" style={heightStyle}>
 
       {/* Counter */}
-      <div className="flex-shrink-0 flex items-center justify-between px-5 pt-5 pb-2">
-        <span className="text-sm font-mono font-medium text-ink-muted">
+      <div className="flex-shrink-0 flex items-center justify-between px-8 pt-6 pb-2">
+        <span className="font-mono text-sm text-ink-muted">
           {String(currentIndex + 1).padStart(2, '0')}
           <span className="text-ink-faint">/{String(total).padStart(2, '0')}</span>
         </span>
         {!currentQuestion.required && (
-          <span className="text-xs text-ink-faint bg-paper-warm px-2 py-1 rounded-md border border-paper-border">Optional</span>
+          <span className="text-xs text-ink-faint">Optional</span>
         )}
       </div>
 
       {isTapOnly ? (
-        <div className="flex-1 flex flex-col px-5 pt-3">
-          <div className="max-w-lg mx-auto w-full flex flex-col h-full">
-            <div className="flex-[2] flex flex-col justify-end pb-6">
-              <h2 className="font-display font-medium text-ink text-xl sm:text-2xl leading-snug">
+        <div className="flex-1 flex flex-col px-8 pt-2">
+          <div className="max-w-md mx-auto w-full flex flex-col h-full">
+            <div className="flex-[2] flex flex-col justify-end pb-8">
+              <h2
+                className="font-display font-light text-ink leading-snug"
+                style={{ fontSize: '24px', letterSpacing: '-0.02em', lineHeight: '1.3' }}
+              >
                 {currentQuestion.text}
               </h2>
             </div>
@@ -253,9 +290,12 @@ export function ParticipantView({ projectId, title, description, questions }: Pa
           </div>
         </div>
       ) : (
-        <div className="flex-1 overflow-y-auto px-5 pt-3">
-          <div className="max-w-lg mx-auto pb-4">
-            <h2 className="font-display font-medium text-ink text-xl sm:text-2xl mb-6 leading-snug">
+        <div className="flex-1 overflow-y-auto px-8 pt-2">
+          <div className="max-w-md mx-auto pb-4">
+            <h2
+              className="font-display font-light text-ink mb-7 leading-snug"
+              style={{ fontSize: '24px', letterSpacing: '-0.02em', lineHeight: '1.3' }}
+            >
               {currentQuestion.text}
             </h2>
             <div className={clsx('transition-opacity duration-150', naActive && 'opacity-25 pointer-events-none')}>
@@ -291,16 +331,17 @@ export function ParticipantView({ projectId, title, description, questions }: Pa
       )}
 
       {/* Bottom nav */}
-      <div className="flex-shrink-0 bg-paper px-5 pt-3" style={safePadding}>
-        <div className="max-w-lg mx-auto flex items-center gap-3 pb-2">
+      <div className="flex-shrink-0 bg-paper border-t border-paper-border px-8 pt-4" style={safePadding}>
+        <div className="max-w-md mx-auto flex items-center gap-3 pb-1">
           <button
             onClick={() => setCurrentIndex(prev => Math.max(-1, prev - 1))}
             disabled={currentIndex === 0}
             className={clsx(
-              'flex items-center gap-1.5 px-4 py-3.5 rounded-xl border-2 text-sm font-medium transition-all active:scale-95',
-              'border-paper-border text-ink-muted bg-white',
+              'flex items-center gap-1.5 px-5 py-3.5 rounded text-sm font-medium transition-all active:scale-95',
+              'border border-paper-border text-ink-muted bg-paper',
               currentIndex === 0 && 'opacity-30 pointer-events-none'
             )}
+            style={{ borderRadius: '6px' }}
           >
             <ArrowLeft size={15} /> Back
           </button>
@@ -308,17 +349,19 @@ export function ParticipantView({ projectId, title, description, questions }: Pa
             onClick={advance}
             disabled={!ready}
             className={clsx(
-              'flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl text-sm font-medium transition-all active:scale-95',
+              'flex-1 flex items-center justify-center gap-2 py-3.5 text-sm font-medium transition-all active:scale-95',
               ready
-                ? 'bg-ink text-[#FAFAF8] border-2 border-ink'
-                : 'bg-paper-mid text-ink-faint border-2 border-paper-mid cursor-not-allowed'
+                ? 'bg-ink text-white'
+                : 'bg-paper-mid text-ink-faint cursor-not-allowed'
             )}
+            style={{ borderRadius: '6px' }}
           >
             {currentIndex === total - 1 ? 'Review' : 'Next'}
             <ArrowRight size={15} />
           </button>
         </div>
       </div>
+
     </div>
   )
 }
@@ -330,16 +373,17 @@ function NAButton({ naActive, onToggle }: { naActive: boolean; onToggle: () => v
     <button
       onClick={onToggle}
       className={clsx(
-        'w-full flex items-center justify-center gap-2.5 py-3 px-4 rounded-xl',
-        'text-sm font-medium border-2 transition-all duration-150 active:scale-95',
+        'w-full flex items-center justify-center gap-2.5 py-3 px-4',
+        'text-sm font-medium border transition-all duration-150 active:scale-95',
         naActive
-          ? 'border-ink bg-ink text-[#FAFAF8]'
-          : 'border-paper-border bg-white text-ink-muted'
+          ? 'border-ink bg-ink text-white'
+          : 'border-paper-border bg-paper text-ink-muted'
       )}
+      style={{ borderRadius: '6px' }}
     >
       <span className={clsx(
         'w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 text-xs font-bold',
-        naActive ? 'border-[#FAFAF8] text-[#FAFAF8]' : 'border-ink-faint text-ink-faint'
+        naActive ? 'border-white text-white' : 'border-ink-faint text-ink-faint'
       )}>
         N/A
       </span>
@@ -358,7 +402,7 @@ function OpenTextInput({ question, value, onChange }: {
       <textarea
         value={value}
         onChange={e => onChange(e.target.value)}
-        placeholder={question.placeholder || 'Type your answer here...'}
+        placeholder={question.placeholder || 'Type your answer here…'}
         rows={4}
         maxLength={question.max_length}
         className="textarea text-base leading-relaxed"
@@ -409,16 +453,17 @@ function MultipleChoiceInput({ question, value, onChange }: {
             <button
               onClick={() => toggle(opt)}
               className={clsx(
-                'w-full flex items-center gap-3 px-4 py-3.5 rounded-xl border-2 text-left',
-                'transition-all duration-150 text-sm font-medium active:scale-[0.98]',
-                isSelected ? 'bg-ink text-[#FAFAF8] border-ink' : 'bg-white text-ink border-paper-border'
+                'w-full flex items-center gap-3 px-4 py-4 text-left',
+                'transition-all duration-150 text-sm font-medium active:scale-[0.98] border',
+                isSelected ? 'bg-ink text-white border-ink' : 'bg-paper text-ink border-paper-border'
               )}
+              style={{ borderRadius: '6px' }}
             >
               <span className={clsx(
-                'w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center',
-                isSelected ? 'border-[#FAFAF8] bg-[#FAFAF8]/20' : 'border-current'
+                'w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center',
+                isSelected ? 'border-white' : 'border-ink-faint'
               )}>
-                {isSelected && <span className="w-2 h-2 rounded-full bg-[#FAFAF8]" />}
+                {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-white" />}
               </span>
               {opt}
             </button>
@@ -435,7 +480,7 @@ function MultipleChoiceInput({ question, value, onChange }: {
                     onChange(e.target.value ? `Other: ${e.target.value}` : 'Other')
                   }
                 }}
-                placeholder="Please specify..."
+                placeholder="Please specify…"
                 className="input mt-2 text-sm"
               />
             )}
@@ -454,36 +499,38 @@ function ScaleInput({ question, value, onChange }: {
   return (
     <div>
       {is10 ? (
-        <div className="grid grid-cols-5 gap-3">
+        <div className="grid grid-cols-5 gap-2.5">
           {steps.map(n => (
             <button
               key={n}
               onClick={() => onChange(n)}
               className={clsx(
-                'aspect-square rounded-xl border-2 text-base font-mono font-medium',
+                'aspect-square text-base font-mono font-medium border',
                 'transition-all duration-150 active:scale-95 flex items-center justify-center',
-                value === n ? 'bg-ink text-[#FAFAF8] border-ink' : 'bg-white text-ink border-paper-border'
+                value === n ? 'bg-ink text-white border-ink' : 'bg-paper text-ink border-paper-border'
               )}
+              style={{ borderRadius: '6px' }}
             >{n}</button>
           ))}
         </div>
       ) : (
-        <div className="flex gap-3">
+        <div className="flex gap-2.5">
           {steps.map(n => (
             <button
               key={n}
               onClick={() => onChange(n)}
               className={clsx(
-                'flex-1 aspect-square rounded-xl border-2 text-lg font-mono font-medium',
+                'flex-1 aspect-square text-lg font-mono font-medium border',
                 'transition-all duration-150 active:scale-95 flex items-center justify-center',
-                value === n ? 'bg-ink text-[#FAFAF8] border-ink' : 'bg-white text-ink border-paper-border'
+                value === n ? 'bg-ink text-white border-ink' : 'bg-paper text-ink border-paper-border'
               )}
+              style={{ borderRadius: '6px' }}
             >{n}</button>
           ))}
         </div>
       )}
       {(question.min_label || question.max_label) && (
-        <div className="flex items-center justify-between mt-3 px-1">
+        <div className="flex items-center justify-between mt-3 px-0.5">
           <span className="text-xs text-ink-faint">{question.min_label}</span>
           <span className="text-xs text-ink-faint">{question.max_label}</span>
         </div>
@@ -505,10 +552,11 @@ function YesNoInput({ question, value, onChange }: {
           key={label}
           onClick={() => onChange(val)}
           className={clsx(
-            'flex-1 py-6 rounded-2xl border-2 text-lg font-medium',
+            'flex-1 py-7 text-lg font-medium border',
             'transition-all duration-150 active:scale-95',
-            value === val ? 'bg-ink text-[#FAFAF8] border-ink' : 'bg-white text-ink border-paper-border'
+            value === val ? 'bg-ink text-white border-ink' : 'bg-paper text-ink border-paper-border'
           )}
+          style={{ borderRadius: '8px' }}
         >{label}</button>
       ))}
     </div>
@@ -522,7 +570,6 @@ function NumericInput({ question, value, onChange }: {
 }) {
   return (
     <div className="space-y-4">
-      {/* Number field */}
       <div>
         {question.number_label && (
           <label className="block text-sm text-ink-muted mb-2">{question.number_label}</label>
@@ -537,19 +584,18 @@ function NumericInput({ question, value, onChange }: {
             })}
             placeholder="0"
             className={clsx(
-              'w-36 text-3xl font-display font-semibold text-ink text-center',
-              'bg-white border-2 border-paper-border rounded-xl py-4 px-3',
+              'w-36 text-3xl font-display font-light text-ink text-center',
+              'bg-paper border border-paper-border py-4 px-3',
               'focus:border-ink outline-none transition-colors',
               '[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none'
             )}
+            style={{ borderRadius: '6px' }}
           />
           {question.unit && (
             <span className="text-sm text-ink-muted font-medium">{question.unit}</span>
           )}
         </div>
       </div>
-
-      {/* Elaboration text field */}
       {question.show_text_field && (
         <div>
           {question.text_label && (
@@ -561,7 +607,7 @@ function NumericInput({ question, value, onChange }: {
           <textarea
             value={value?.text || ''}
             onChange={e => onChange({ ...value, text: e.target.value })}
-            placeholder={question.text_placeholder || 'Please elaborate...'}
+            placeholder={question.text_placeholder || 'Please elaborate…'}
             rows={3}
             className="textarea text-base leading-relaxed"
           />
