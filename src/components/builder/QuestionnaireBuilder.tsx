@@ -183,7 +183,7 @@ export function QuestionnaireBuilder({ initialProject, onSaved, onPublished, pen
     <div className="min-h-screen bg-paper">
 
       {/* Sub-header */}
-      <header className="sticky top-0 z-40 bg-paper/90 backdrop-blur-sm border-b border-paper-border">
+      <header className="sticky top-0 z-40 backdrop-blur-sm border-b border-paper-border" style={{ backgroundColor: 'rgba(250,250,248,0.9)' }}>
         <div className="max-w-7xl mx-auto px-8 h-12 flex items-center justify-between gap-4">
           <div className="flex items-center gap-2 text-sm">
             <a

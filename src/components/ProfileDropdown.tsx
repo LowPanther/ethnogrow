@@ -68,7 +68,7 @@ export function ProfileDropdown({ email, initials, plan }: ProfileDropdownProps)
 
       {/* Dropdown */}
       {open && (
-        <div className="absolute right-0 top-full mt-2 w-64 bg-paper border border-paper-border rounded shadow-float z-50 animate-slide-down overflow-hidden">
+        <div className="absolute right-0 top-full mt-2 w-64 bg-paper border border-paper-border rounded shadow-float z-[100] animate-slide-down overflow-hidden">
 
           {/* Email label */}
           <div className="px-4 py-3 border-b border-paper-border">
