@@ -22,7 +22,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { Plus, Sparkles, Save, Share2, Eye, ChevronDown, Layers, CheckCircle2, AlertCircle, Copy } from 'lucide-react'
+import { Plus, Sparkles, Save, Share2, Eye, ChevronDown, Layers, CheckCircle2, AlertCircle } from 'lucide-react'
 
 function SortableQuestion({
   question, index, isActive, onUpdate, onDelete, onFocus,
@@ -52,56 +52,17 @@ function SortableQuestion({
   )
 }
 
-function PublishPopover({ url, onDismiss }: { url: string; onDismiss: () => void }) {
-  const [copied, setCopied] = useState(false)
-
-  function copy() {
-    navigator.clipboard.writeText(url)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
-
-  useEffect(() => {
-    const t = setTimeout(onDismiss, 12000)
-    return () => clearTimeout(t)
-  }, [onDismiss])
-
-  return (
-    <div className="absolute top-full right-0 mt-2 z-50 animate-slide-down w-80">
-      <div className="bg-ink rounded-xl shadow-float p-3">
-        <div className="flex items-center justify-between mb-2">
-          <span className="flex items-center gap-1.5 text-xs font-medium" style={{ color: 'rgba(255,255,255,0.9)' }}>
-            <CheckCircle2 size={13} className="text-sage-light" />
-            Published — share this link
-          </span>
-          <button onClick={onDismiss} className="text-lg leading-none" style={{ color: 'rgba(255,255,255,0.3)' }}>×</button>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-mono truncate flex-1" style={{ color: 'rgba(255,255,255,0.5)' }}>{url}</span>
-          <button
-            onClick={copy}
-            className="flex-shrink-0 text-xs font-medium px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors"
-            style={{ backgroundColor: copied ? 'rgba(74,124,111,0.4)' : 'rgba(255,255,255,0.12)', color: 'white' }}
-          >
-            <Copy size={11} />
-            {copied ? 'Copied!' : 'Copy'}
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
 interface QuestionnaireBuilderProps {
   initialProject?: Partial<Project>
   onSaved?: (project: Project) => void
+  onPublished?: () => void
   pendingQuestion?: Question | null
   onPendingQuestionConsumed?: () => void
 }
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error'
 
-export function QuestionnaireBuilder({ initialProject, onSaved, pendingQuestion, onPendingQuestionConsumed }: QuestionnaireBuilderProps) {
+export function QuestionnaireBuilder({ initialProject, onSaved, onPublished, pendingQuestion, onPendingQuestionConsumed }: QuestionnaireBuilderProps) {
   const [title, setTitle] = useState(initialProject?.title || '')
   const [description, setDescription] = useState(initialProject?.description || '')
   const [questions, setQuestions] = useState<Question[]>(initialProject?.questions || [])
@@ -109,7 +70,6 @@ export function QuestionnaireBuilder({ initialProject, onSaved, pendingQuestion,
   const [showTypeMenu, setShowTypeMenu] = useState(false)
   const [saveState, setSaveState] = useState<SaveState>('idle')
   const [saveError, setSaveError] = useState<string | null>(null)
-  const [publishedUrl, setPublishedUrl] = useState<string | null>(null)
 
   const addQuestionRef = useRef<HTMLDivElement>(null)
 
@@ -200,8 +160,7 @@ export function QuestionnaireBuilder({ initialProject, onSaved, pendingQuestion,
       onSaved?.(result.data as Project)
 
       if (status === 'active') {
-        const token = (result.data as any).participant_token
-        setPublishedUrl(`${window.location.origin}/p/${token}`)
+        onPublished?.()
       }
 
       setTimeout(() => setSaveState('idle'), 2000)
@@ -354,7 +313,7 @@ export function QuestionnaireBuilder({ initialProject, onSaved, pendingQuestion,
                         <span className={clsx('flex items-center gap-1.5 text-xs', meta.color)}>
                           <span className="font-mono">{icon}</span>{label}
                         </span>
-                        <span className="text-xs font-mono text-ink-muted">{count}</span>
+                        <span className="text-xs font-mono font-medium text-ink-muted">{count}</span>
                       </div>
                     )
                   })}
@@ -384,8 +343,6 @@ export function QuestionnaireBuilder({ initialProject, onSaved, pendingQuestion,
           </aside>
         </div>
       </div>
-
-      {publishedUrl && <PublishPopover url={publishedUrl} onDismiss={() => setPublishedUrl(null)} />}
     </div>
   )
 }

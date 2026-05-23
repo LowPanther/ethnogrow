@@ -142,6 +142,7 @@ export default function ProjectDetailClient({ project, responses, existingReport
         <QuestionnaireBuilder
           initialProject={currentProject}
           onSaved={setCurrentProject}
+          onPublished={() => setActiveTab('share')}
           pendingQuestion={pendingQuestion}
           onPendingQuestionConsumed={handlePendingConsumed}
         />

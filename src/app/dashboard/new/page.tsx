@@ -55,11 +55,6 @@ export default function NewProjectPage() {
               <p className="text-xs text-ink-muted leading-relaxed">
                 Tell us what you want to find out and we'll design the questions for you
               </p>
-              <div className="mt-3">
-                <span className="text-xs px-2 py-0.5 bg-sage-pale text-sage-DEFAULT rounded font-medium">
-                  Recommended
-                </span>
-              </div>
             </button>
 
             <button
