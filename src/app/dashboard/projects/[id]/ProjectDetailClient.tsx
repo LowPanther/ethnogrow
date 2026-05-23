@@ -28,6 +28,15 @@ export default function ProjectDetailClient({ project, responses, existingReport
   const [status, setStatus] = useState(project.status)
   const [statusLoading, setStatusLoading] = useState(false)
   const [pendingQuestion, setPendingQuestion] = useState<Question | null>(null)
+  const [allowlistEnabled, setAllowlistEnabled] = useState<boolean>(
+    !!project.allowed_emails && project.allowed_emails.length > 0
+  )
+  const [allowlistDraft, setAllowlistDraft] = useState<string>(
+    (project.allowed_emails || []).join('\n')
+  )
+  const [allowlistSaving, setAllowlistSaving] = useState(false)
+  const [allowlistError, setAllowlistError] = useState<string | null>(null)
+  const [allowlistSaved, setAllowlistSaved] = useState(false)
 
   async function toggleStatus() {
     const newStatus = status === 'active' ? 'closed' : 'active'
@@ -62,6 +71,54 @@ export default function ProjectDetailClient({ project, responses, existingReport
     navigator.clipboard.writeText(participantUrl)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
+  }
+
+  async function saveAllowlist() {
+    setAllowlistSaving(true)
+    setAllowlistError(null)
+
+    const raw = allowlistEnabled ? allowlistDraft : ''
+    const entries = raw
+      .split(/[\n,]+/)
+      .map(e => e.trim().toLowerCase().replace(/^@/, ''))
+      .filter(e => e.length > 0)
+
+    // Validate entries
+    const invalid = entries.filter(e => {
+      if (e.includes('@')) {
+        // Full email — must have chars before and after @
+        const parts = e.split('@')
+        return parts.length !== 2 || !parts[0] || !parts[1].includes('.')
+      }
+      // Domain — must contain a dot
+      return !e.includes('.')
+    })
+
+    if (invalid.length > 0) {
+      setAllowlistError(`Invalid entries: ${invalid.slice(0, 3).join(', ')}${invalid.length > 3 ? ` and ${invalid.length - 3} more` : ''}`)
+      setAllowlistSaving(false)
+      return
+    }
+
+    const unique = [...new Set(entries)]
+
+    try {
+      const res = await fetch('/api/projects', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          project_id: currentProject.id,
+          allowed_emails: unique,
+        }),
+      })
+      if (!res.ok) throw new Error('Failed to save')
+      setAllowlistSaved(true)
+      setTimeout(() => setAllowlistSaved(false), 2500)
+    } catch {
+      setAllowlistError('Failed to save. Please try again.')
+    } finally {
+      setAllowlistSaving(false)
+    }
   }
 
   const tabs: { id: Tab; label: string; icon: React.ReactNode; count?: number; badge?: boolean }[] = [
@@ -186,6 +243,14 @@ export default function ProjectDetailClient({ project, responses, existingReport
           participantUrl={participantUrl}
           copied={copied}
           onCopy={copyLink}
+          allowlistEnabled={allowlistEnabled}
+          setAllowlistEnabled={setAllowlistEnabled}
+          allowlistDraft={allowlistDraft}
+          setAllowlistDraft={setAllowlistDraft}
+          allowlistSaving={allowlistSaving}
+          allowlistSaved={allowlistSaved}
+          allowlistError={allowlistError}
+          onSaveAllowlist={saveAllowlist}
         />
       </div>
     </div>
@@ -479,11 +544,27 @@ function ShareTab({
   participantUrl,
   copied,
   onCopy,
+  allowlistEnabled,
+  setAllowlistEnabled,
+  allowlistDraft,
+  setAllowlistDraft,
+  allowlistSaving,
+  allowlistSaved,
+  allowlistError,
+  onSaveAllowlist,
 }: {
   project: Project
   participantUrl: string
   copied: boolean
   onCopy: () => void
+  allowlistEnabled: boolean
+  setAllowlistEnabled: (v: boolean) => void
+  allowlistDraft: string
+  setAllowlistDraft: (v: string) => void
+  allowlistSaving: boolean
+  allowlistSaved: boolean
+  allowlistError: string | null
+  onSaveAllowlist: () => void
 }) {
   const isActive = project.status === 'active'
 

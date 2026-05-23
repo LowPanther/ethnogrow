@@ -19,31 +19,35 @@ export async function generateMetadata({ params }: Props) {
 }
 
 export default async function ParticipantPage({ params }: Props) {
-  // Use service role for public participant access
   const supabase = createServerSideClient()
 
   const { data: project, error } = await supabase
     .from('projects')
-    .select('id, title, description, questions, status')
+    .select('id, title, description, questions, status, allowed_emails')
     .eq('participant_token', params.token)
     .single()
 
   if (error || !project) notFound()
+
   if (project.status !== 'active') {
     return (
-      <div className="min-h-screen bg-paper flex flex-col items-center justify-center px-6 text-center">
-        <div className="w-14 h-14 bg-paper-warm rounded-2xl flex items-center justify-center mx-auto mb-4 text-2xl">
-          ◎
-        </div>
-        <h1 className="font-display font-semibold text-ink text-xl mb-2">
+      <div className="min-h-screen bg-paper flex flex-col items-center justify-center px-8 text-center">
+        <p className="text-2xl text-ink-faint mb-5">◎</p>
+        <h1
+          className="font-display font-light text-ink mb-2"
+          style={{ fontSize: '28px', letterSpacing: '-0.02em', lineHeight: '1.2' }}
+        >
           This questionnaire is closed
         </h1>
-        <p className="text-sm text-ink-muted max-w-xs">
+        <p className="text-sm text-ink-muted max-w-xs leading-relaxed">
           The researcher has closed this study. Thank you for your interest.
         </p>
+        <p className="text-xs text-ink-faint mt-8">Ethnogrow</p>
       </div>
     )
   }
+
+  const hasAllowlist = Array.isArray(project.allowed_emails) && project.allowed_emails.length > 0
 
   return (
     <ParticipantView
@@ -51,6 +55,7 @@ export default async function ParticipantPage({ params }: Props) {
       title={project.title}
       description={project.description}
       questions={project.questions as Question[]}
+      hasAllowlist={hasAllowlist}
     />
   )
 }

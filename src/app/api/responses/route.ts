@@ -1,8 +1,25 @@
 import { createServerSideClient } from '@/lib/supabase-server'
 import { NextRequest, NextResponse } from 'next/server'
-import { detectFlags, FLAG_REASON_LABELS } from '@/lib/questions'
+import { detectFlags } from '@/lib/questions'
 import { Question } from '@/types'
-import { createHash } from 'crypto'
+
+function emailMatchesAllowlist(email: string, allowlist: string[]): boolean {
+  const normalised = email.trim().toLowerCase()
+  const domain = normalised.split('@')[1]
+  return allowlist.some(entry => {
+    const e = entry.trim().toLowerCase().replace(/^@/, '')
+    if (e.includes('@')) return normalised === e
+    return domain === e
+  })
+}
+
+async function hashEmail(email: string): Promise<string> {
+  const encoder = new TextEncoder()
+  const data = encoder.encode(email.trim().toLowerCase())
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data)
+  const hashArray = Array.from(new Uint8Array(hashBuffer))
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -14,17 +31,18 @@ export async function POST(req: NextRequest) {
       session_id,
       responses,
       completion_time_seconds,
-      email_hash,  // SHA-256 hash of participant email, computed client-side
+      email,      // plain text — used for allowlist check and hashing, never stored
+      email_hash, // pre-computed hash from client as fallback
     } = body
 
     if (!project_id || !session_id || !responses) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
-    // 1. Fetch project to get questions for flag detection
+    // 1. Fetch project
     const { data: project, error: projectError } = await supabase
       .from('projects')
-      .select('questions, status')
+      .select('questions, status, allowed_emails')
       .eq('id', project_id)
       .single()
 
@@ -33,16 +51,33 @@ export async function POST(req: NextRequest) {
     }
 
     if (project.status !== 'active') {
-      return NextResponse.json({ error: 'This questionnaire is no longer accepting responses' }, { status: 403 })
+      return NextResponse.json({ error: 'This questionnaire is no longer accepting responses.' }, { status: 403 })
     }
 
-    // 2. Check for duplicate email hash if provided
-    if (email_hash) {
+    // 2. Allowlist check — second gate (server-side, cannot be bypassed)
+    if (project.allowed_emails && project.allowed_emails.length > 0 && email) {
+      const allowed = emailMatchesAllowlist(email, project.allowed_emails)
+      if (!allowed) {
+        return NextResponse.json({
+          error: 'not_allowed',
+          message: 'This questionnaire is only available to specific participants.',
+        }, { status: 403 })
+      }
+    }
+
+    // 3. Compute hash server-side if plain email provided (more reliable than client hash)
+    let finalHash: string | undefined = email_hash
+    if (email) {
+      finalHash = await hashEmail(email)
+    }
+
+    // 4. Duplicate check
+    if (finalHash) {
       const { data: existing } = await supabase
         .from('response_verifications')
         .select('id')
         .eq('project_id', project_id)
-        .eq('email_hash', email_hash)
+        .eq('email_hash', finalHash)
         .single()
 
       if (existing) {
@@ -53,7 +88,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 3. Detect quality flags
+    // 5. Detect quality flags
     const draftResponse = {
       id: '',
       project_id,
@@ -64,12 +99,9 @@ export async function POST(req: NextRequest) {
     }
 
     const flagReasons = detectFlags(draftResponse, project.questions as Question[])
+    const flagStatus = flagReasons.length > 0 ? 'flagged' : null
 
-    // Add duplicate flag if email hash matched earlier attempts (already caught above,
-    // but in case we want to surface it differently in future)
-    const flagStatus = flagReasons.length > 0 ? 'flagged' : undefined
-
-    // 4. Insert the response
+    // 6. Insert response
     const { data: inserted, error: insertError } = await supabase
       .from('responses')
       .insert({
@@ -77,7 +109,7 @@ export async function POST(req: NextRequest) {
         session_id,
         responses,
         completion_time_seconds,
-        flag_status: flagStatus ?? null,
+        flag_status: flagStatus,
         flag_reasons: flagReasons.length > 0 ? flagReasons : null,
       })
       .select('id')
@@ -85,11 +117,11 @@ export async function POST(req: NextRequest) {
 
     if (insertError) throw insertError
 
-    // 5. Store email hash for future deduplication
-    if (email_hash) {
+    // 7. Store email hash for deduplication
+    if (finalHash) {
       await supabase
         .from('response_verifications')
-        .insert({ project_id, email_hash })
+        .insert({ project_id, email_hash: finalHash })
     }
 
     return NextResponse.json({ success: true, id: inserted.id })

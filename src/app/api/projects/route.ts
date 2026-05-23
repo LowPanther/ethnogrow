@@ -1,26 +1,42 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSideClient } from '@/lib/supabase-server'
 
-// PATCH — archive or unarchive
 export async function PATCH(req: NextRequest) {
   try {
-    const { project_id, status } = await req.json()
-    if (!project_id || !status) {
-      return NextResponse.json({ error: 'project_id and status required' }, { status: 400 })
-    }
+    const body = await req.json()
+    const { project_id, status, allowed_emails } = body
 
-    const validStatuses = ['draft', 'active', 'closed', 'archived']
-    if (!validStatuses.includes(status)) {
-      return NextResponse.json({ error: 'Invalid status' }, { status: 400 })
+    if (!project_id) {
+      return NextResponse.json({ error: 'project_id required' }, { status: 400 })
     }
 
     const supabase = createServerSideClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+    // Build update payload — only include fields that were provided
+    const updates: Record<string, any> = {
+      updated_at: new Date().toISOString(),
+    }
+
+    if (status !== undefined) {
+      const validStatuses = ['draft', 'active', 'closed', 'archived']
+      if (!validStatuses.includes(status)) {
+        return NextResponse.json({ error: 'Invalid status' }, { status: 400 })
+      }
+      updates.status = status
+    }
+
+    if (allowed_emails !== undefined) {
+      // allowed_emails should be an array of strings or null to clear
+      updates.allowed_emails = Array.isArray(allowed_emails) && allowed_emails.length > 0
+        ? allowed_emails
+        : null
+    }
+
     const { data, error } = await supabase
       .from('projects')
-      .update({ status, updated_at: new Date().toISOString() })
+      .update(updates)
       .eq('id', project_id)
       .eq('researcher_id', user.id)
       .select()
@@ -34,7 +50,6 @@ export async function PATCH(req: NextRequest) {
   }
 }
 
-// DELETE — permanent
 export async function DELETE(req: NextRequest) {
   try {
     const { project_id } = await req.json()
@@ -46,24 +61,6 @@ export async function DELETE(req: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    // Verify ownership before deleting
-    const { data: project } = await supabase
-      .from('projects')
-      .select('id')
-      .eq('id', project_id)
-      .eq('researcher_id', user.id)
-      .single()
-
-    if (!project) {
-      return NextResponse.json({ error: 'Project not found' }, { status: 404 })
-    }
-
-    // Delete related data first (responses, reports, suggestions)
-    await supabase.from('ai_suggestions').delete().eq('project_id', project_id)
-    await supabase.from('ai_reports').delete().eq('project_id', project_id)
-    await supabase.from('responses').delete().eq('project_id', project_id)
-
-    // Delete the project
     const { error } = await supabase
       .from('projects')
       .delete()

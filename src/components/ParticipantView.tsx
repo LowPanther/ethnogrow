@@ -15,6 +15,7 @@ interface ParticipantViewProps {
   title: string
   description?: string
   questions: Question[]
+  hasAllowlist?: boolean
 }
 
 const NA_VALUE = '__NA__'
@@ -36,7 +37,7 @@ async function hashEmail(email: string): Promise<string> {
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
 }
 
-export function ParticipantView({ projectId, title, description, questions }: ParticipantViewProps) {
+export function ParticipantView({ projectId, title, description, questions, hasAllowlist }: ParticipantViewProps) {
   const [currentIndex, setCurrentIndex] = useState(-1)
   const [responses, setResponses] = useState<Map<string, QuestionResponse>>(new Map())
   const [submitted, setSubmitted] = useState(false)
@@ -46,6 +47,9 @@ export function ParticipantView({ projectId, title, description, questions }: Pa
   const [participantEmail, setParticipantEmail] = useState('')
   const [emailError, setEmailError] = useState<string | null>(null)
   const [alreadySubmitted, setAlreadySubmitted] = useState(false)
+  const [notAllowed, setNotAllowed] = useState(false)
+  const [notAllowedMessage, setNotAllowedMessage] = useState('')
+  const [validating, setValidating] = useState(false)
   const sessionId = useState(() => generateUUID())[0]
   const startedAt = useRef<number | null>(null)
 
@@ -140,7 +144,7 @@ export function ParticipantView({ projectId, title, description, questions }: Pa
     return resp.value !== undefined && resp.value !== null
   }
 
-  function advance() {
+  async function advance() {
     if (isWelcome) {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
       if (!participantEmail.trim() || !emailRegex.test(participantEmail.trim())) {
@@ -148,7 +152,26 @@ export function ParticipantView({ projectId, title, description, questions }: Pa
         return
       }
       setEmailError(null)
-      startedAt.current = Date.now()
+      setValidating(true)
+      try {
+        const res = await fetch('/api/validate-participant', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ project_id: projectId, email: participantEmail.trim() }),
+        })
+        const data = await res.json()
+        if (!data.allowed) {
+          setNotAllowed(true)
+          setNotAllowedMessage(data.message || 'You are not eligible to participate in this questionnaire.')
+          return
+        }
+      } catch {
+        setEmailError('Something went wrong. Please try again.')
+        return
+      } finally {
+        setValidating(false)
+        startedAt.current = Date.now()
+      }
     }
     if (!canAdvance()) return
     setCurrentIndex(prev => prev + 1)
@@ -163,10 +186,6 @@ export function ParticipantView({ projectId, title, description, questions }: Pa
         ? Math.round((Date.now() - startedAt.current) / 1000)
         : undefined
 
-      const emailHash = participantEmail.trim()
-        ? await hashEmail(participantEmail)
-        : undefined
-
       const res = await fetch('/api/responses', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -175,7 +194,7 @@ export function ParticipantView({ projectId, title, description, questions }: Pa
           session_id: sessionId,
           responses: Array.from(responses.values()),
           completion_time_seconds: completionTime,
-          email_hash: emailHash,
+          email: participantEmail.trim() || undefined,
         }),
       })
 
@@ -221,6 +240,29 @@ export function ParticipantView({ projectId, title, description, questions }: Pa
         </h1>
         <p className="text-sm text-ink-muted max-w-xs leading-relaxed">
           You've already completed this questionnaire. Each person can only submit once.
+        </p>
+        <p className="text-xs text-ink-faint mt-8">Ethnogrow</p>
+      </div>
+    )
+  }
+
+
+  // ── Not allowed ────────────────────────────────────────────────────────────
+
+  if (notAllowed) {
+    return (
+      <div className="fixed inset-0 bg-paper flex flex-col items-center justify-center px-8 text-center participant-root" style={heightStyle}>
+        <div className="w-12 h-12 flex items-center justify-center mb-6 text-2xl">
+          ✕
+        </div>
+        <h1
+          className="font-display font-light text-ink mb-3"
+          style={{ fontSize: '28px', letterSpacing: '-0.02em', lineHeight: '1.2' }}
+        >
+          Not eligible
+        </h1>
+        <p className="text-sm text-ink-muted max-w-xs leading-relaxed">
+          {notAllowedMessage}
         </p>
         <p className="text-xs text-ink-faint mt-8">Ethnogrow</p>
       </div>
@@ -287,10 +329,13 @@ export function ParticipantView({ projectId, title, description, questions }: Pa
             >
               <label className="block text-sm font-medium text-ink mb-1">
                 Your email address
+                {hasAllowlist && <span className="ml-1.5 text-xs font-normal text-ink-faint">(required for access)</span>}
               </label>
               <p className="text-xs text-ink-muted mb-3 leading-relaxed">
-                We use this to make sure each person only submits once.
-                It's never shared with the researcher or used for any other purpose.
+                {hasAllowlist
+                  ? "This questionnaire is restricted to specific participants. We use your email to verify eligibility and ensure each person only submits once. It's never shared with the researcher or used for any other purpose."
+                  : "We use this to make sure each person only submits once. It's never shared with the researcher or used for any other purpose."
+                }
               </p>
               <input
                 type="email"
@@ -311,16 +356,16 @@ export function ParticipantView({ projectId, title, description, questions }: Pa
           <div className="max-w-md mx-auto">
             <button
               onClick={advance}
-              disabled={!participantEmail.trim()}
+              disabled={!participantEmail.trim() || validating}
               className={clsx(
                 'w-full flex items-center justify-center gap-2 py-4 text-base font-medium transition-all active:scale-95',
-                participantEmail.trim()
+                participantEmail.trim() && !validating
                   ? 'bg-ink text-white'
                   : 'bg-paper-mid text-ink-faint cursor-not-allowed'
               )}
               style={{ borderRadius: '6px' }}
             >
-              Begin <ArrowRight size={18} />
+              {validating ? 'Checking…' : <> Begin <ArrowRight size={18} /> </>}
             </button>
           </div>
         </div>

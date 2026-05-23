@@ -85,6 +85,7 @@ export interface Project {
   status: ProjectStatus
   questions: Question[]
   participant_link?: string
+  allowed_emails?: string[]
   created_at: string
   updated_at: string
   response_count?: number
