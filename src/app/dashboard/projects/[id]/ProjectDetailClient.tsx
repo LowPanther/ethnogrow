@@ -83,14 +83,11 @@ export default function ProjectDetailClient({ project, responses, existingReport
       .map(e => e.trim().toLowerCase().replace(/^@/, ''))
       .filter(e => e.length > 0)
 
-    // Validate entries
     const invalid = entries.filter(e => {
       if (e.includes('@')) {
-        // Full email — must have chars before and after @
         const parts = e.split('@')
         return parts.length !== 2 || !parts[0] || !parts[1].includes('.')
       }
-      // Domain — must contain a dot
       return !e.includes('.')
     })
 
@@ -131,17 +128,18 @@ export default function ProjectDetailClient({ project, responses, existingReport
   return (
     <div className="min-h-screen bg-paper">
 
-      {/* Tab bar */}
+      {/* Tab bar — scrollable on mobile to handle overflow */}
       <div className="border-b border-paper-border bg-paper">
-        <div className="max-w-7xl mx-auto px-8">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1">
+        <div className="max-w-7xl mx-auto px-4 md:px-8">
+          {/* On mobile: tabs and status stack vertically */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-0 overflow-x-auto scrollbar-hide">
               {tabs.map(tab => (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
                   className={clsx(
-                    'flex items-center gap-1.5 px-4 py-3.5 text-sm font-medium border-b-2 transition-colors relative',
+                    'flex items-center gap-1.5 px-3 md:px-4 py-3.5 text-sm font-medium border-b-2 transition-colors relative whitespace-nowrap',
                     activeTab === tab.id
                       ? 'border-ink text-ink'
                       : 'border-transparent text-ink-muted hover:text-ink'
@@ -164,8 +162,8 @@ export default function ProjectDetailClient({ project, responses, existingReport
               ))}
             </div>
 
-            {/* Status control */}
-            <div className="flex items-center gap-3 py-2">
+            {/* Status control — sits below tabs on mobile, inline on desktop */}
+            <div className="flex items-center gap-3 py-2 px-1 sm:px-0 border-t border-paper-border sm:border-t-0">
               <span className={clsx(
                 'flex items-center gap-1.5 text-xs font-medium',
                 status === 'active' ? 'text-green-700' : 'text-ink-muted'
@@ -215,7 +213,7 @@ export default function ProjectDetailClient({ project, responses, existingReport
       </div>
 
       <div className={activeTab === 'report' ? 'block' : 'hidden'}>
-        <div className="max-w-7xl mx-auto px-8 py-10">
+        <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 md:py-10">
           {usage.responses_analysed / usage.response_cap >= 0.75 && (
             <div className="mb-6 max-w-2xl">
               <UsageIndicator
@@ -306,7 +304,7 @@ function ResponsesTab({
 
   if (responses.length === 0) {
     return (
-      <div className="max-w-7xl mx-auto px-8 py-24 text-center">
+      <div className="max-w-7xl mx-auto px-4 md:px-8 py-24 text-center">
         <p className="text-2xl text-ink-faint mb-5">◎</p>
         <h3
           className="font-display font-light text-ink mb-2"
@@ -322,8 +320,9 @@ function ResponsesTab({
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-8 py-10">
-      <div className="flex items-center justify-between mb-8">
+    <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 md:py-10">
+      {/* Header — stacks on mobile */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
         <div>
           <h2
             className="font-display font-light text-ink"
@@ -368,7 +367,7 @@ function ResponsesTab({
         {project.questions.map((question, i) => (
           <div
             key={question.id}
-            className="p-6"
+            className="p-4 md:p-6"
             style={{ backgroundColor: 'rgba(15,15,15,0.03)', borderRadius: '4px' }}
           >
             <div className="flex items-start gap-3 mb-4">
@@ -419,10 +418,10 @@ function ResponsesTab({
                   opacity: isExcluded ? 0.6 : 1,
                 }}
               >
-                {/* Flag banner — only on flagged responses */}
+                {/* Flag banner */}
                 {isFlagged && (
                   <div
-                    className="flex items-start justify-between px-4 py-3 border-b"
+                    className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 px-4 py-3 border-b"
                     style={{ borderColor: 'rgba(232,160,32,0.25)', backgroundColor: 'rgba(232,160,32,0.07)' }}
                   >
                     <div className="flex items-start gap-2.5">
@@ -438,7 +437,7 @@ function ResponsesTab({
                         </ul>
                       </div>
                     </div>
-                    <div className="flex items-center gap-1.5 flex-shrink-0 ml-4">
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
                       <button
                         onClick={() => updateFlagStatus(r.id, 'reviewed_included')}
                         className="flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded transition-colors"
@@ -569,162 +568,163 @@ function ShareTab({
   const isActive = project.status === 'active'
 
   return (
-    <div className="max-w-xl mx-auto px-8 py-12">
-          <h2
-            className="font-display font-light text-ink mb-2"
-            style={{ fontSize: '28px', letterSpacing: '-0.02em', lineHeight: '1.2' }}
+    <div className="max-w-xl mx-auto px-4 md:px-8 py-10 md:py-12">
+      <h2
+        className="font-display font-light text-ink mb-2"
+        style={{ fontSize: '28px', letterSpacing: '-0.02em', lineHeight: '1.2' }}
+      >
+        Share your questionnaire
+      </h2>
+      <p className="text-sm text-ink-muted mb-8 leading-relaxed">
+        Participants don't need to create an account. Send them this link directly.
+      </p>
+
+      {!isActive && (
+        <div
+          className="flex items-start gap-3 p-4 mb-6 rounded"
+          style={{ backgroundColor: 'rgba(232,160,32,0.08)', border: '0.5px solid rgba(232,160,32,0.3)' }}
+        >
+          <span className="text-amber-signal mt-0.5 text-sm">⚠</span>
+          <div>
+            <p className="text-sm font-medium text-ink">This project isn't published yet</p>
+            <p className="text-xs text-ink-muted mt-0.5">
+              Publish it from the Builder tab before sharing — participants won't be able to respond to a draft.
+            </p>
+          </div>
+        </div>
+      )}
+
+      <div className="mb-8">
+        <p className="text-xs font-medium tracking-widest uppercase text-ink-faint mb-3">
+          Participant link
+        </p>
+        {/* Stack input and button on very small screens */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+          <input
+            type="text"
+            value={participantUrl}
+            readOnly
+            className="input text-sm font-mono"
+            style={{ backgroundColor: 'rgba(15,15,15,0.03)' }}
+          />
+          <button
+            onClick={onCopy}
+            className={clsx(
+              'flex-shrink-0 btn-secondary text-xs px-3 whitespace-nowrap justify-center',
+              copied && 'text-green-700 border-green-200 bg-green-50'
+            )}
           >
-            Share your questionnaire
-          </h2>
-          <p className="text-sm text-ink-muted mb-8 leading-relaxed">
-            Participants don't need to create an account. Send them this link directly.
-          </p>
+            {copied ? <CheckCheck size={13} /> : <Copy size={13} />}
+            {copied ? 'Copied' : 'Copy'}
+          </button>
+        </div>
+        <a
+          href={participantUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 text-xs text-ink-muted hover:text-ink mt-3 transition-colors"
+        >
+          <ExternalLink size={11} />
+          Open participant view
+        </a>
+      </div>
 
-          {!isActive && (
-            <div
-              className="flex items-start gap-3 p-4 mb-6 rounded"
-              style={{ backgroundColor: 'rgba(232,160,32,0.08)', border: '0.5px solid rgba(232,160,32,0.3)' }}
-            >
-              <span className="text-amber-signal mt-0.5 text-sm">⚠</span>
-              <div>
-                <p className="text-sm font-medium text-ink">This project isn't published yet</p>
-                <p className="text-xs text-ink-muted mt-0.5">
-                  Publish it from the Builder tab before sharing — participants won't be able to respond to a draft.
-                </p>
-              </div>
-            </div>
-          )}
+      <div className="pt-8 border-t border-paper-border">
+        <p className="text-xs font-medium tracking-widest uppercase text-ink-faint mb-5">
+          Good to know
+        </p>
+        <ul className="space-y-3">
+          {[
+            'Participants answer one question at a time — no cognitive overload.',
+            'Works on any device, no login required.',
+            'Responses are saved automatically as participants progress.',
+            'You can close responses at any time without losing any data.',
+          ].map((tip, i) => (
+            <li key={i} className="flex items-start gap-3 text-sm text-ink-muted">
+              <span className="text-ink-faint mt-0.5 text-xs">—</span>
+              {tip}
+            </li>
+          ))}
+        </ul>
+      </div>
 
-          <div className="mb-8">
-            <p className="text-xs font-medium tracking-widest uppercase text-ink-faint mb-3">
-              Participant link
+      {/* Restrict access — allowlist */}
+      <div className="pt-8 border-t border-paper-border">
+        <div className="flex items-start justify-between mb-4">
+          <div>
+            <p className="text-xs font-medium tracking-widest uppercase text-ink-faint mb-1">
+              Restrict access
             </p>
-            <div className="flex items-center gap-2">
-              <input
-                type="text"
-                value={participantUrl}
-                readOnly
-                className="input text-sm font-mono"
-                style={{ backgroundColor: 'rgba(15,15,15,0.03)' }}
+            <p className="text-sm text-ink-muted leading-relaxed">
+              Limit responses to specific email addresses or domains.
+            </p>
+          </div>
+          <button
+            onClick={() => setAllowlistEnabled(!allowlistEnabled)}
+            className={clsx(
+              'flex items-center gap-1.5 text-xs font-medium transition-colors flex-shrink-0 ml-6 mt-1',
+              allowlistEnabled ? 'text-ink' : 'text-ink-faint'
+            )}
+          >
+            {allowlistEnabled
+              ? <span className="text-teal text-base leading-none">On</span>
+              : <span className="text-base leading-none text-ink-faint">Off</span>
+            }
+          </button>
+        </div>
+
+        {allowlistEnabled && (
+          <div className="space-y-3 animate-slide-down">
+            <div>
+              <label className="block text-xs text-ink-muted mb-1.5">
+                Email addresses or domains — one per line, or comma-separated
+              </label>
+              <textarea
+                value={allowlistDraft}
+                onChange={e => setAllowlistDraft(e.target.value)}
+                className="textarea text-sm font-mono"
+                rows={6}
+                placeholder="company.com&#10;john@partner.com&#10;another.org"
               />
+              <p className="text-xs text-ink-faint mt-1.5 leading-relaxed">
+                Enter full email addresses or domains to match all addresses at that domain.
+                Matching is exact — subdomains are not included.
+              </p>
+            </div>
+
+            {allowlistError && (
+              <p className="text-xs px-3 py-2 rounded" style={{ color: '#c93638', backgroundColor: 'rgba(201,54,56,0.06)', border: '0.5px solid rgba(201,54,56,0.2)' }}>
+                {allowlistError}
+              </p>
+            )}
+
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-ink-faint">
+                {allowlistDraft.split(/[\n,]+/).map((e: string) => e.trim()).filter((e: string) => e.length > 0).length} entries
+              </p>
               <button
-                onClick={onCopy}
-                className={clsx(
-                  'flex-shrink-0 btn-secondary text-xs px-3 whitespace-nowrap',
-                  copied && 'text-green-700 border-green-200 bg-green-50'
-                )}
+                onClick={onSaveAllowlist}
+                disabled={allowlistSaving}
+                className="btn-primary text-xs py-1.5 px-4"
               >
-                {copied ? <CheckCheck size={13} /> : <Copy size={13} />}
-                {copied ? 'Copied' : 'Copy'}
+                {allowlistSaved ? 'Saved' : allowlistSaving ? 'Saving…' : 'Save allowlist'}
               </button>
             </div>
-            <a
-              href={participantUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 text-xs text-ink-muted hover:text-ink mt-3 transition-colors"
+          </div>
+        )}
+
+        {!allowlistEnabled && allowlistDraft.trim().length > 0 && (
+          <div className="mt-3">
+            <button
+              onClick={onSaveAllowlist}
+              disabled={allowlistSaving}
+              className="btn-secondary text-xs py-1.5 px-4"
             >
-              <ExternalLink size={11} />
-              Open participant view
-            </a>
+              {allowlistSaved ? 'Saved' : 'Save (clear allowlist)'}
+            </button>
           </div>
-
-          <div className="pt-8 border-t border-paper-border">
-            <p className="text-xs font-medium tracking-widest uppercase text-ink-faint mb-5">
-              Good to know
-            </p>
-            <ul className="space-y-3">
-              {[
-                'Participants answer one question at a time — no cognitive overload.',
-                'Works on any device, no login required.',
-                'Responses are saved automatically as participants progress.',
-                'You can close responses at any time without losing any data.',
-              ].map((tip, i) => (
-                <li key={i} className="flex items-start gap-3 text-sm text-ink-muted">
-                  <span className="text-ink-faint mt-0.5 text-xs">—</span>
-                  {tip}
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Restrict access — allowlist */}
-          <div className="pt-8 border-t border-paper-border">
-            <div className="flex items-start justify-between mb-4">
-              <div>
-                <p className="text-xs font-medium tracking-widest uppercase text-ink-faint mb-1">
-                  Restrict access
-                </p>
-                <p className="text-sm text-ink-muted leading-relaxed">
-                  Limit responses to specific email addresses or domains.
-                </p>
-              </div>
-              <button
-                onClick={() => setAllowlistEnabled(!allowlistEnabled)}
-                className={clsx(
-                  'flex items-center gap-1.5 text-xs font-medium transition-colors flex-shrink-0 ml-6 mt-1',
-                  allowlistEnabled ? 'text-ink' : 'text-ink-faint'
-                )}
-              >
-                {allowlistEnabled
-                  ? <span className="text-teal text-base leading-none">On</span>
-                  : <span className="text-base leading-none text-ink-faint">Off</span>
-                }
-              </button>
-            </div>
-
-            {allowlistEnabled && (
-              <div className="space-y-3 animate-slide-down">
-                <div>
-                  <label className="block text-xs text-ink-muted mb-1.5">
-                    Email addresses or domains — one per line, or comma-separated
-                  </label>
-                  <textarea
-                    value={allowlistDraft}
-                    onChange={e => setAllowlistDraft(e.target.value)}
-                    className="textarea text-sm font-mono"
-                    rows={6}
-                    placeholder="company.com&#10;john@partner.com&#10;another.org"
-                  />
-                  <p className="text-xs text-ink-faint mt-1.5 leading-relaxed">
-                    Enter full email addresses or domains to match all addresses at that domain.
-                    Matching is exact — subdomains are not included.
-                  </p>
-                </div>
-
-                {allowlistError && (
-                  <p className="text-xs px-3 py-2 rounded" style={{ color: '#c93638', backgroundColor: 'rgba(201,54,56,0.06)', border: '0.5px solid rgba(201,54,56,0.2)' }}>
-                    {allowlistError}
-                  </p>
-                )}
-
-                <div className="flex items-center justify-between">
-                  <p className="text-xs text-ink-faint">
-                    {allowlistDraft.split(/[\n,]+/).map((e: string) => e.trim()).filter((e: string) => e.length > 0).length} entries
-                  </p>
-                  <button
-                    onClick={onSaveAllowlist}
-                    disabled={allowlistSaving}
-                    className="btn-primary text-xs py-1.5 px-4"
-                  >
-                    {allowlistSaved ? 'Saved' : allowlistSaving ? 'Saving…' : 'Save allowlist'}
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {!allowlistEnabled && allowlistDraft.trim().length > 0 && (
-              <div className="mt-3">
-                <button
-                  onClick={onSaveAllowlist}
-                  disabled={allowlistSaving}
-                  className="btn-secondary text-xs py-1.5 px-4"
-                >
-                  {allowlistSaved ? 'Saved' : 'Save (clear allowlist)'}
-                </button>
-              </div>
-            )}
-          </div>
+        )}
+      </div>
     </div>
   )
 }

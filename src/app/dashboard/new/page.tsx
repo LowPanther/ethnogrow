@@ -25,7 +25,7 @@ export default function NewProjectPage() {
 
   if (mode === 'choose') {
     return (
-      <div className="min-h-screen bg-paper flex flex-col items-center justify-center px-8">
+      <div className="min-h-screen bg-paper flex flex-col items-center justify-center px-4 md:px-8">
         <div className="w-full max-w-lg">
 
           <h1
@@ -34,17 +34,18 @@ export default function NewProjectPage() {
           >
             New project
           </h1>
-          <p className="text-sm text-ink-muted text-center mb-10">
+          <p className="text-sm text-ink-muted text-center mb-8 md:mb-10">
             How would you like to build your questionnaire?
           </p>
 
-          <div className="grid grid-cols-2 gap-4">
+          {/* Stack cards on mobile, side by side on sm+ */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <button
               onClick={() => setMode('generate')}
-              className="tint-card p-8 text-left"
+              className="tint-card p-6 md:p-8 text-left"
             >
               <div
-                className="w-9 h-9 flex items-center justify-center mb-5"
+                className="w-9 h-9 flex items-center justify-center mb-4 md:mb-5"
                 style={{ backgroundColor: 'rgba(8,155,247,0.1)', borderRadius: '4px' }}
               >
                 <Wand2 size={17} className="text-teal" />
@@ -62,10 +63,10 @@ export default function NewProjectPage() {
 
             <button
               onClick={() => setMode('build')}
-              className="tint-card p-8 text-left"
+              className="tint-card p-6 md:p-8 text-left"
             >
               <div
-                className="w-9 h-9 flex items-center justify-center mb-5"
+                className="w-9 h-9 flex items-center justify-center mb-4 md:mb-5"
                 style={{ backgroundColor: 'rgba(15,15,15,0.06)', borderRadius: '4px' }}
               >
                 <PenLine size={17} className="text-ink-muted" />

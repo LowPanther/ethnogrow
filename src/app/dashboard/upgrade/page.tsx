@@ -1,7 +1,7 @@
 import { createServerSideClient } from '@/lib/supabase-server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Zap } from 'lucide-react'
+import { ArrowLeft } from 'lucide-react'
 
 export const metadata = { title: 'Upgrade — Ethnogrow' }
 
@@ -22,10 +22,10 @@ const PLANS = [
   {
     id: 'starter',
     name: 'Starter',
-    price: 5,
+    price: 9,
     description: 'For researchers running regular studies.',
     features: [
-      '2 AI reports per month',
+      '5 AI reports per month',
       'Everything in Free',
       'PDF report export',
       'Follow-up question suggestions',
@@ -35,10 +35,10 @@ const PLANS = [
   {
     id: 'pro',
     name: 'Pro',
-    price: 9,
+    price: 19,
     description: 'For active researchers who need more every month.',
     features: [
-      '5 AI reports per month',
+      '20 AI reports per month',
       'Everything in Starter',
       'AI question generation',
       'Token add-on bundles',
@@ -61,19 +61,19 @@ export default async function UpgradePage() {
   const currentPlan = usage?.plan ?? 'free'
 
   return (
-    <main className="max-w-7xl mx-auto px-8 py-12">
+    <main className="max-w-7xl mx-auto px-4 md:px-8 py-10 md:py-12">
 
       <Link
         href="/dashboard"
-        className="inline-flex items-center gap-2 text-sm text-ink-muted hover:text-ink transition-colors mb-12"
+        className="inline-flex items-center gap-2 text-sm text-ink-muted hover:text-ink transition-colors mb-10 md:mb-12"
       >
         <ArrowLeft size={14} />
         Back to dashboard
       </Link>
 
-      <div className="grid grid-cols-[200px_1fr] gap-12 items-start">
-
-        <div className="sticky top-6">
+      {/* Plans section */}
+      <div className="grid grid-cols-1 md:grid-cols-[200px_1fr] gap-4 md:gap-12 items-start">
+        <div className="md:sticky md:top-6">
           <p className="text-xs font-medium tracking-widest uppercase text-ink-faint">
             Plans
           </p>
@@ -82,17 +82,16 @@ export default async function UpgradePage() {
         <div>
           <h1
             className="font-display font-light text-ink mb-4"
-            style={{ fontSize: '32px', letterSpacing: '-0.02em', lineHeight: '1.2' }}
+            style={{ fontSize: 'clamp(24px, 5vw, 32px)', letterSpacing: '-0.02em', lineHeight: '1.2' }}
           >
             Choose your plan
           </h1>
-          <p className="text-ink-muted leading-relaxed max-w-xl mb-10" style={{ lineHeight: '1.75' }}>
+          <p className="text-ink-muted leading-relaxed max-w-xl mb-8 md:mb-10" style={{ lineHeight: '1.75' }}>
             Data collection is always unlimited. You pay for AI analysis — and only when you need it.
           </p>
 
-          {/* Pricing grid */}
-          <div className="grid grid-cols-3 border border-paper-border rounded divide-x divide-paper-border overflow-hidden">
-
+          {/* Pricing grid — single column on mobile, three columns on desktop */}
+          <div className="grid grid-cols-1 md:grid-cols-3 border border-paper-border rounded overflow-hidden divide-y md:divide-y-0 md:divide-x divide-paper-border">
             {PLANS.map(plan => {
               const isCurrent = plan.id === currentPlan
               const isHighlighted = plan.id === 'starter'
@@ -100,10 +99,8 @@ export default async function UpgradePage() {
               return (
                 <div
                   key={plan.id}
-                  className="flex flex-col p-8 space-y-6"
-                  style={{
-                    backgroundColor: isHighlighted ? '#0c1e27' : undefined,
-                  }}
+                  className="flex flex-col p-6 md:p-8 space-y-5 md:space-y-6"
+                  style={{ backgroundColor: isHighlighted ? '#0c1e27' : undefined }}
                 >
                   <div>
                     <p
@@ -149,7 +146,8 @@ export default async function UpgradePage() {
                         className="flex items-start gap-2.5 text-sm"
                         style={{ color: isHighlighted ? 'rgba(250,250,248,0.6)' : undefined }}
                       >
-                        <span className="text-sage-DEFAULT mt-0.5 text-sm flex-shrink-0">✓</span>
+                        {/* text-teal replaces broken text-sage-DEFAULT token */}
+                        <span className="text-teal mt-0.5 text-sm flex-shrink-0">✓</span>
                         {!isHighlighted && <span className="text-ink-muted">{f}</span>}
                         {isHighlighted && f}
                       </li>
@@ -188,7 +186,6 @@ export default async function UpgradePage() {
                 </div>
               )
             })}
-
           </div>
 
           <p className="mt-5 text-xs text-ink-faint">
@@ -197,9 +194,9 @@ export default async function UpgradePage() {
         </div>
       </div>
 
-      {/* FAQ */}
-      <div className="grid grid-cols-[200px_1fr] gap-12 items-start mt-16 pt-16 border-t border-paper-border">
-        <div className="sticky top-6">
+      {/* FAQ section */}
+      <div className="grid grid-cols-1 md:grid-cols-[200px_1fr] gap-4 md:gap-12 items-start mt-12 md:mt-16 pt-12 md:pt-16 border-t border-paper-border">
+        <div className="md:sticky md:top-6">
           <p className="text-xs font-medium tracking-widest uppercase text-ink-faint">FAQ</p>
         </div>
         <div className="space-y-8 max-w-xl">
@@ -218,7 +215,7 @@ export default async function UpgradePage() {
             },
             {
               q: 'When will payments be available?',
-              a: 'We\'re finalising our payments setup. Paid plans will be available very soon. In the meantime, enjoy the Free plan.',
+              a: "We're finalising our payments setup. Paid plans will be available very soon. In the meantime, enjoy the Free plan.",
             },
           ].map(({ q, a }) => (
             <div key={q}>

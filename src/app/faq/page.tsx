@@ -34,7 +34,7 @@ const FAQS = [
       },
       {
         q: 'Can I edit a questionnaire after publishing it?',
-        a: 'Yes, but with care. Editing questions after responses have been collected can affect how those responses are analysed. Adding new questions is safe — existing responses simply won\'t have answers for the new questions.'
+        a: "Yes, but with care. Editing questions after responses have been collected can affect how those responses are analysed. Adding new questions is safe — existing responses simply won't have answers for the new questions."
       },
       {
         q: 'How do I close a questionnaire?',
@@ -55,7 +55,7 @@ const FAQS = [
       },
       {
         q: 'What happens when I hit my monthly report limit?',
-        a: 'You can still collect responses and view existing reports. You just won\'t be able to generate new AI reports until your allowance resets or you upgrade your plan.'
+        a: "You can still collect responses and view existing reports. You just won't be able to generate new AI reports until your allowance resets or you upgrade your plan."
       },
       {
         q: 'Are participant responses anonymous?',
@@ -68,7 +68,7 @@ const FAQS = [
     questions: [
       {
         q: 'What plans are available?',
-        a: 'Ethnogrow offers three plans: Free ($0/month, 1 AI report per month), Starter ($5/month, 2 AI reports per month), and Pro ($9/month, 5 AI reports per month). All plans include unlimited data collection.'
+        a: 'Ethnogrow offers three plans: Free ($0/month, 1 AI report per month), Starter ($9/month, 5 AI reports per month), and Pro ($19/month, 20 AI reports per month). All plans include unlimited data collection.'
       },
       {
         q: 'Can I upgrade or downgrade at any time?',
@@ -80,7 +80,7 @@ const FAQS = [
       },
       {
         q: 'When will paid plans be available?',
-        a: 'We\'re finalising our payments setup. Paid plans will be available very soon. In the meantime, all users have access to the Free plan.'
+        a: "We're finalising our payments setup. Paid plans will be available very soon. In the meantime, all users have access to the Free plan."
       },
     ]
   },
@@ -108,7 +108,7 @@ export default function FAQPage() {
     <div className="min-h-screen bg-paper flex flex-col">
 
       <nav className="border-b border-paper-border">
-        <div className="max-w-7xl mx-auto px-8 h-14 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 md:px-8 h-14 flex items-center justify-between">
           <Link href="/" className="font-display font-normal text-ink text-lg tracking-tight" style={{ letterSpacing: '-0.02em' }}>
             Ethnogrow
           </Link>
@@ -118,14 +118,15 @@ export default function FAQPage() {
         </div>
       </nav>
 
-      <main className="flex-1 max-w-7xl mx-auto px-8 py-16 w-full">
+      <main className="flex-1 max-w-7xl mx-auto px-4 md:px-8 py-12 md:py-16 w-full">
 
-        <div className="grid grid-cols-[200px_1fr] gap-12 items-start mb-16">
-          <p className="text-xs font-medium tracking-widest uppercase text-ink-faint pt-2 sticky top-6">FAQ</p>
+        {/* Header */}
+        <div className="grid grid-cols-1 md:grid-cols-[200px_1fr] gap-4 md:gap-12 items-start mb-12 md:mb-16">
+          <p className="text-xs font-medium tracking-widest uppercase text-ink-faint md:pt-2 md:sticky md:top-6">FAQ</p>
           <div>
             <h1
               className="font-display font-light text-ink mb-4"
-              style={{ fontSize: '32px', letterSpacing: '-0.02em', lineHeight: '1.2' }}
+              style={{ fontSize: 'clamp(24px, 5vw, 32px)', letterSpacing: '-0.02em', lineHeight: '1.2' }}
             >
               Frequently asked questions
             </h1>
@@ -138,10 +139,14 @@ export default function FAQPage() {
           </div>
         </div>
 
+        {/* FAQ sections */}
         <div className="space-y-0">
           {FAQS.map(section => (
-            <div key={section.category} className="grid grid-cols-[200px_1fr] gap-12 items-start border-t border-paper-border py-12">
-              <p className="text-xs font-medium tracking-widest uppercase text-ink-faint pt-1 sticky top-6">
+            <div
+              key={section.category}
+              className="grid grid-cols-1 md:grid-cols-[200px_1fr] gap-4 md:gap-12 items-start border-t border-paper-border py-10 md:py-12"
+            >
+              <p className="text-xs font-medium tracking-widest uppercase text-ink-faint md:pt-1 md:sticky md:top-6">
                 {section.category}
               </p>
               <div className="space-y-8">
