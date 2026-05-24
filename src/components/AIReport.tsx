@@ -269,7 +269,8 @@ export function AIReport({ projectId, projectTitle = 'Research Report', response
       {report.key_findings?.length > 0 && (
         <div>
           <div className="flex items-center gap-2 mb-4">
-            <Lightbulb size={15} className="text-amber-signal" />
+            {/* Lightbulb matches text colour — amber is illegible at small sizes */}
+            <Lightbulb size={15} className="text-ink" />
             <h2
               className="font-display font-light text-ink"
               style={{ fontSize: '18px', letterSpacing: '-0.01em' }}
@@ -314,24 +315,19 @@ export function AIReport({ projectId, projectTitle = 'Research Report', response
                 style={{ backgroundColor: 'rgba(15,15,15,0.03)', borderRadius: '4px' }}
               >
                 <div className="flex items-start gap-3">
-                  <span className={clsx(
-                    'flex-shrink-0 px-1.5 py-0.5 rounded text-xs font-mono font-medium mt-0.5',
-                    insight.type === 'scale' && 'bg-amber-pale text-amber-signal',
-                    insight.type === 'multiple_choice' && 'bg-teal-pale text-teal',
-                    insight.type === 'yes_no' && 'bg-coral-pale text-coral',
-                    insight.type === 'open_text' && 'bg-paper-warm text-ink-muted',
-                    insight.type === 'numeric' && 'bg-lobster-pale text-lobster',
-                  )}>
+                  {/* All question type badges use the same neutral style — colour adds no meaning here */}
+                  <span className="flex-shrink-0 px-1.5 py-0.5 rounded text-xs font-mono font-medium mt-0.5 bg-paper-warm text-ink-muted">
                     {insight.type.replace('_', ' ')}
                   </span>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between mb-1 gap-2">
-                      <p className="text-xs text-ink-muted leading-snug flex-1">{insight.question}</p>
+                      {/* Question text: promoted from text-xs to text-sm — it's readable content */}
+                      <p className="text-sm text-ink-muted leading-snug flex-1">{insight.question}</p>
                       {insight.response_count !== undefined && insight.total_responses !== undefined && (
                         <span className={clsx(
                           'flex-shrink-0 text-xs font-mono px-1.5 py-0.5 rounded',
                           insight.response_count < insight.total_responses
-                            ? 'bg-amber-pale text-amber-signal'
+                            ? 'bg-coral-pale text-coral'
                             : 'bg-paper-warm text-ink-faint'
                         )}>
                           {insight.response_count}/{insight.total_responses}
@@ -339,9 +335,11 @@ export function AIReport({ projectId, projectTitle = 'Research Report', response
                       )}
                     </div>
                     <p className="text-sm font-medium text-ink mb-1">{insight.headline}</p>
-                    <p className="text-xs text-ink-muted leading-relaxed">{insight.detail}</p>
+                    {/* Detail text: promoted from text-xs to text-sm — it's readable content */}
+                    <p className="text-sm text-ink-muted leading-relaxed">{insight.detail}</p>
+                    {/* Coverage note: coral because it's important information, not a warning */}
                     {insight.coverage_note && (
-                      <p className="text-xs text-amber-signal mt-1.5 italic">{insight.coverage_note}</p>
+                      <p className="text-sm text-coral mt-1.5 italic">{insight.coverage_note}</p>
                     )}
                   </div>
                 </div>
@@ -381,7 +379,8 @@ export function AIReport({ projectId, projectTitle = 'Research Report', response
                     </span>
                     <div>
                       <p className="text-sm font-medium text-ink">{theme.label}</p>
-                      <p className="text-xs text-ink-muted mt-0.5">{theme.description}</p>
+                      {/* Theme description: promoted from text-xs to text-sm */}
+                      <p className="text-sm text-ink-muted mt-0.5">{theme.description}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3 flex-shrink-0 ml-3">
@@ -394,7 +393,8 @@ export function AIReport({ projectId, projectTitle = 'Research Report', response
                     {theme.supporting_quotes.map((quote, j) => (
                       <div key={j} className="flex items-start gap-2">
                         <Quote size={12} className="text-ink-faint flex-shrink-0 mt-1" />
-                        <p className="text-xs text-ink-muted italic leading-relaxed">"{quote}"</p>
+                        {/* Supporting quotes: promoted from text-xs to text-sm */}
+                        <p className="text-sm text-ink-muted italic leading-relaxed">"{quote}"</p>
                       </div>
                     ))}
                   </div>
