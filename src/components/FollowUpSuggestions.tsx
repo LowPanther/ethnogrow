@@ -56,19 +56,15 @@ export function FollowUpSuggestions({
   }
 
   async function handleAdd(suggestion: Suggestion) {
-    // Create a proper question object from the suggestion
     const newQuestion = createQuestion(suggestion.question_type, 999)
     newQuestion.text = suggestion.question_text
 
-    // Queue in builder — researcher stays here and can add more
     onAddQuestion(newQuestion)
 
-    // Mark as added locally immediately
     setSuggestions(prev =>
       prev.map(s => s.id === suggestion.id ? { ...s, status: 'added' } : s)
     )
 
-    // Persist status to DB in background
     fetch('/api/suggestions', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -98,8 +94,14 @@ export function FollowUpSuggestions({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Lightbulb size={15} className="text-amber-signal" />
-          <h2 className="font-display font-semibold text-ink text-lg">Suggested follow-up questions</h2>
+          {/* Lightbulb matches text colour — amber is illegible at small sizes */}
+          <Lightbulb size={15} className="text-ink" />
+          <h2
+            className="font-display font-light text-ink"
+            style={{ fontSize: '18px', letterSpacing: '-0.01em' }}
+          >
+            Suggested follow-up questions
+          </h2>
         </div>
         <button
           onClick={generateSuggestions}
@@ -111,27 +113,34 @@ export function FollowUpSuggestions({
         </button>
       </div>
 
-      {/* Explanation */}
-      <p className="text-xs text-ink-muted leading-relaxed">
+      {/* Explanation — readable instructional text, not a label */}
+      <p className="text-sm text-ink-muted leading-relaxed">
         Based on patterns in your data, these questions would help you go deeper.
         Tap <strong>Add</strong> to drop any question straight into your questionnaire.
         The original responses are never changed.
       </p>
 
+      {/* Error — using design system lobster tokens, not Tailwind defaults */}
       {error && (
-        <div className="flex items-center gap-2 px-4 py-3 bg-red-50 border border-red-100 rounded-lg text-sm text-red-700">
-          <AlertCircle size={14} /> {error}
+        <div
+          className="flex items-center gap-2 px-4 py-3 text-sm rounded"
+          style={{ backgroundColor: 'rgba(201,54,56,0.06)', border: '0.5px solid rgba(201,54,56,0.2)', color: '#c93638' }}
+        >
+          <AlertCircle size={14} className="flex-shrink-0" /> {error}
         </div>
       )}
 
-      {/* Empty state */}
+      {/* Empty state — teal because this is an AI feature, not amber */}
       {!hasSuggestions && !loading && (
         <div className="flex flex-col items-center justify-center py-10 text-center card">
-          <div className="w-12 h-12 rounded-xl bg-amber-pale flex items-center justify-center mb-3">
-            <Sparkles size={18} className="text-amber-signal" />
+          <div
+            className="w-12 h-12 flex items-center justify-center mb-3"
+            style={{ backgroundColor: 'rgba(8,155,247,0.08)', borderRadius: '6px' }}
+          >
+            <Sparkles size={18} className="text-teal" />
           </div>
           <p className="text-sm font-medium text-ink mb-1">No suggestions yet</p>
-          <p className="text-xs text-ink-muted mb-4 max-w-xs leading-relaxed">
+          <p className="text-sm text-ink-muted mb-4 max-w-xs leading-relaxed">
             Generate suggestions and Claude will analyse your data to find gaps and patterns worth probing.
           </p>
           <button onClick={generateSuggestions} disabled={loading} className="btn-primary text-xs">
@@ -164,9 +173,9 @@ export function FollowUpSuggestions({
               <div key={suggestion.id} className="card overflow-hidden">
                 <div className="p-4">
                   <div className="flex items-start gap-3">
-                    {/* Type badge */}
-                    <span className={clsx('type-badge flex-shrink-0 mt-0.5', meta.bgColor, meta.color)}>
-                      {meta.icon} {meta.label}
+                    {/* Type badge — neutral style, consistent with AIReport */}
+                    <span className="flex-shrink-0 px-1.5 py-0.5 rounded text-xs font-mono font-medium mt-0.5 bg-paper-warm text-ink-muted">
+                      {meta.label}
                     </span>
 
                     {/* Question text */}
@@ -175,7 +184,7 @@ export function FollowUpSuggestions({
                         {suggestion.question_text}
                       </p>
 
-                      {/* Rationale — expandable */}
+                      {/* Rationale toggle */}
                       <button
                         onClick={() => setExpandedId(isExpanded ? null : suggestion.id)}
                         className="flex items-center gap-1 text-xs text-ink-faint hover:text-ink-muted mt-1.5 transition-colors"
@@ -189,7 +198,7 @@ export function FollowUpSuggestions({
                     <div className="flex items-center gap-1.5 flex-shrink-0">
                       <button
                         onClick={() => handleDismiss(suggestion)}
-                        className="btn-ghost p-1.5 hover:text-red-500 hover:bg-red-50"
+                        className="btn-ghost p-1.5"
                         title="Dismiss"
                       >
                         <X size={13} />
@@ -209,11 +218,11 @@ export function FollowUpSuggestions({
                     <div className="mt-3 pt-3 border-t border-paper-border space-y-2 animate-slide-down">
                       <div>
                         <span className="text-xs font-medium text-ink-muted uppercase tracking-wide">Why ask this</span>
-                        <p className="text-xs text-ink-muted mt-1 leading-relaxed">{suggestion.rationale}</p>
+                        <p className="text-sm text-ink-muted mt-1 leading-relaxed">{suggestion.rationale}</p>
                       </div>
                       <div>
                         <span className="text-xs font-medium text-ink-muted uppercase tracking-wide">Pattern in your data</span>
-                        <p className="text-xs text-ink-muted mt-1 leading-relaxed italic">"{suggestion.source_pattern}"</p>
+                        <p className="text-sm text-ink-muted mt-1 leading-relaxed italic">"{suggestion.source_pattern}"</p>
                       </div>
                     </div>
                   )}
@@ -224,7 +233,7 @@ export function FollowUpSuggestions({
         </div>
       )}
 
-      {/* Already added */}
+      {/* Added questions — teal-pale/teal replaces missing sage tokens */}
       {added.length > 0 && (
         <div className="pt-2">
           <p className="text-xs text-ink-faint font-medium uppercase tracking-wide mb-2">
@@ -232,9 +241,9 @@ export function FollowUpSuggestions({
           </p>
           <div className="space-y-1.5">
             {added.map(s => (
-              <div key={s.id} className="flex items-center gap-2 px-3 py-2 bg-sage-pale rounded-lg">
-                <span className="text-sage-DEFAULT text-xs">✦</span>
-                <p className="text-xs text-ink-muted">{s.question_text}</p>
+              <div key={s.id} className="flex items-center gap-2 px-3 py-2 bg-teal-pale rounded">
+                <span className="text-teal text-xs">✦</span>
+                <p className="text-sm text-ink-muted">{s.question_text}</p>
               </div>
             ))}
           </div>
