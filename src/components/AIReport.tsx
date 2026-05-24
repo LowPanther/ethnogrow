@@ -4,8 +4,9 @@ import { useState } from 'react'
 import { FollowUpSuggestions } from './FollowUpSuggestions'
 import { Question } from '@/types'
 import { clsx } from 'clsx'
-import { Sparkles, RefreshCw, AlertCircle, TrendingUp, Quote, Lightbulb, BarChart2, ChevronDown, ChevronUp, Download } from 'lucide-react'
+import { Sparkles, RefreshCw, AlertCircle, TrendingUp, Quote, Lightbulb, BarChart2, ChevronDown, ChevronUp, Download, ArrowUpCircle } from 'lucide-react'
 import { exportReportPDF, exportReportCSV } from '@/lib/exportUtils'
+import Link from 'next/link'
 
 interface QuestionInsight {
   question: string
@@ -22,14 +23,6 @@ interface Theme {
   description: string
   frequency: number
   supporting_quotes?: string[]
-}
-
-interface ReportData {
-  summary: string
-  question_insights: QuestionInsight[]
-  themes: Theme[]
-  key_findings: string[]
-  sample_note: string
 }
 
 interface SavedReport {
@@ -58,12 +51,17 @@ export function AIReport({ projectId, projectTitle = 'Research Report', response
   const [report, setReport] = useState<SavedReport | null>(existingReport || null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [limitReached, setLimitReached] = useState(false)
+  const [limitDetails, setLimitDetails] = useState<{ message: string; plan: string } | null>(null)
   const [expandedThemes, setExpandedThemes] = useState<Set<number>>(new Set([0]))
   const [exporting, setExporting] = useState<'pdf' | 'csv' | null>(null)
 
   async function generateReport() {
     setLoading(true)
     setError(null)
+    setLimitReached(false)
+    setLimitDetails(null)
+
     try {
       const res = await fetch('/api/reports', {
         method: 'POST',
@@ -71,7 +69,16 @@ export function AIReport({ projectId, projectTitle = 'Research Report', response
         body: JSON.stringify({ project_id: projectId }),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Failed to generate report')
+
+      if (!res.ok) {
+        if (data.error === 'report_limit_reached') {
+          setLimitReached(true)
+          setLimitDetails({ message: data.message, plan: data.plan })
+          return
+        }
+        throw new Error(data.error || 'Failed to generate report')
+      }
+
       setReport(data.report)
     } catch (err: any) {
       setError(err.message)
@@ -108,13 +115,17 @@ export function AIReport({ projectId, projectTitle = 'Research Report', response
     })
   }
 
+  // Not enough responses
   if (responseCount < MIN_RESPONSES) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center">
-        <div className="w-14 h-14 rounded-xl bg-paper-warm border border-paper-border flex items-center justify-center mx-auto mb-4 text-2xl">
-          ◎
-        </div>
-        <h3 className="font-display font-medium text-ink mb-1">Not enough responses yet</h3>
+        <p className="text-2xl text-ink-faint mb-5">◎</p>
+        <h3
+          className="font-display font-light text-ink mb-2"
+          style={{ fontSize: '22px', letterSpacing: '-0.02em' }}
+        >
+          Not enough responses yet
+        </h3>
         <p className="text-sm text-ink-muted max-w-xs leading-relaxed">
           You need at least {MIN_RESPONSES} responses to generate a meaningful report.
           You currently have {responseCount}.
@@ -123,28 +134,72 @@ export function AIReport({ projectId, projectTitle = 'Research Report', response
     )
   }
 
+  // Report limit reached
+  if (limitReached && limitDetails) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 text-center">
+        <div
+          className="w-12 h-12 flex items-center justify-center mb-5"
+          style={{ backgroundColor: 'rgba(232,160,32,0.1)', borderRadius: '6px' }}
+        >
+          <ArrowUpCircle size={22} className="text-amber-signal" />
+        </div>
+        <h3
+          className="font-display font-light text-ink mb-2"
+          style={{ fontSize: '22px', letterSpacing: '-0.02em' }}
+        >
+          Monthly report limit reached
+        </h3>
+        <p className="text-sm text-ink-muted max-w-sm leading-relaxed mb-6">
+          {limitDetails.message}
+        </p>
+        <Link href="/dashboard/upgrade" className="btn-primary">
+          <ArrowUpCircle size={14} />
+          Upgrade plan
+        </Link>
+        <button
+          onClick={() => { setLimitReached(false); setLimitDetails(null) }}
+          className="btn-ghost text-sm mt-3"
+        >
+          Dismiss
+        </button>
+      </div>
+    )
+  }
+
+  // No report yet
   if (!report) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center">
-        <div className="w-14 h-14 rounded-xl bg-teal-pale border border-teal/20 flex items-center justify-center mx-auto mb-4">
+        <div
+          className="w-12 h-12 flex items-center justify-center mb-5"
+          style={{ backgroundColor: 'rgba(8,155,247,0.08)', borderRadius: '6px' }}
+        >
           <Sparkles size={22} className="text-teal" />
         </div>
-        <h3 className="font-display font-medium text-ink mb-1">Ready to analyse</h3>
+        <h3
+          className="font-display font-light text-ink mb-2"
+          style={{ fontSize: '22px', letterSpacing: '-0.02em' }}
+        >
+          Ready to analyse
+        </h3>
         <p className="text-sm text-ink-muted max-w-xs mb-6 leading-relaxed">
-          Claude will analyse your {responseCount} responses and produce a plain-language report with themes, insights, and key findings.
+          Claude will analyse your {responseCount} response{responseCount !== 1 ? 's' : ''} and produce a plain-language report with themes, insights, and key findings.
         </p>
         {error && (
-          <div className="flex items-center gap-2 px-4 py-3 bg-lobster-pale border border-lobster/20 rounded-lg text-sm text-lobster-dark mb-4 max-w-sm">
+          <div
+            className="flex items-center gap-2 px-4 py-3 text-sm mb-4 max-w-sm rounded"
+            style={{ backgroundColor: 'rgba(201,54,56,0.06)', border: '0.5px solid rgba(201,54,56,0.2)', color: '#c93638' }}
+          >
             <AlertCircle size={14} className="flex-shrink-0" />
             {error}
           </div>
         )}
         <button onClick={generateReport} disabled={loading} className="btn-primary">
-          {loading ? (
-            <><RefreshCw size={14} className="animate-spin" /> Analysing responses...</>
-          ) : (
-            <><Sparkles size={14} /> Generate AI report</>
-          )}
+          {loading
+            ? <><RefreshCw size={14} className="animate-spin" /> Analysing responses…</>
+            : <><Sparkles size={14} /> Generate AI report</>
+          }
         </button>
       </div>
     )
@@ -167,42 +222,44 @@ export function AIReport({ projectId, projectTitle = 'Research Report', response
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {/* Export buttons */}
-          <button
-            onClick={handleExportPDF}
-            disabled={!!exporting}
-            className="btn-secondary text-xs py-1.5 px-3"
-          >
+          <button onClick={handleExportPDF} disabled={!!exporting} className="btn-secondary text-xs py-1.5 px-3">
             <Download size={12} />
-            {exporting === 'pdf' ? 'Exporting...' : 'PDF'}
+            {exporting === 'pdf' ? 'Exporting…' : 'PDF'}
           </button>
-          <button
-            onClick={handleExportCSV}
-            disabled={!!exporting}
-            className="btn-secondary text-xs py-1.5 px-3"
-          >
+          <button onClick={handleExportCSV} disabled={!!exporting} className="btn-secondary text-xs py-1.5 px-3">
             <Download size={12} />
-            {exporting === 'csv' ? 'Exporting...' : 'CSV'}
+            {exporting === 'csv' ? 'Exporting…' : 'CSV'}
           </button>
           <button onClick={generateReport} disabled={loading} className="btn-ghost text-xs">
             <RefreshCw size={12} className={clsx(loading && 'animate-spin')} />
-            {loading ? 'Regenerating...' : 'Regenerate'}
+            {loading ? 'Regenerating…' : 'Regenerate'}
           </button>
         </div>
       </div>
 
       {error && (
-        <div className="flex items-center gap-2 px-4 py-3 bg-lobster-pale border border-lobster/20 rounded-lg text-sm text-lobster-dark">
+        <div
+          className="flex items-center gap-2 px-4 py-3 text-sm rounded"
+          style={{ backgroundColor: 'rgba(201,54,56,0.06)', border: '0.5px solid rgba(201,54,56,0.2)', color: '#c93638' }}
+        >
           <AlertCircle size={14} /> {error}
         </div>
       )}
 
       {/* Summary */}
-      <div className="card p-6 bg-teal-pale border-teal/15">
-        <h2 className="font-display font-semibold text-ink text-lg mb-3">Summary</h2>
+      <div
+        className="p-6"
+        style={{ backgroundColor: 'rgba(8,155,247,0.06)', border: '0.5px solid rgba(8,155,247,0.15)', borderRadius: '4px' }}
+      >
+        <h2
+          className="font-display font-light text-ink mb-3"
+          style={{ fontSize: '18px', letterSpacing: '-0.01em' }}
+        >
+          Summary
+        </h2>
         <p className="text-sm text-ink leading-relaxed">{report.summary}</p>
         {reportData.sample_note && (
-          <p className="text-xs text-ink-muted mt-3 italic border-t border-teal/15 pt-3">
+          <p className="text-xs text-ink-muted mt-3 italic border-t pt-3" style={{ borderColor: 'rgba(8,155,247,0.15)' }}>
             {reportData.sample_note}
           </p>
         )}
@@ -213,11 +270,20 @@ export function AIReport({ projectId, projectTitle = 'Research Report', response
         <div>
           <div className="flex items-center gap-2 mb-4">
             <Lightbulb size={15} className="text-amber-signal" />
-            <h2 className="font-display font-semibold text-ink text-lg">Key findings</h2>
+            <h2
+              className="font-display font-light text-ink"
+              style={{ fontSize: '18px', letterSpacing: '-0.01em' }}
+            >
+              Key findings
+            </h2>
           </div>
           <div className="space-y-3">
             {report.key_findings.map((finding, i) => (
-              <div key={i} className="flex items-start gap-3 p-4 card">
+              <div
+                key={i}
+                className="flex items-start gap-3 p-4"
+                style={{ backgroundColor: 'rgba(15,15,15,0.03)', borderRadius: '4px' }}
+              >
                 <span className="flex-shrink-0 w-6 h-6 rounded-full bg-ink text-white flex items-center justify-center text-xs font-mono font-medium mt-0.5">
                   {i + 1}
                 </span>
@@ -233,11 +299,20 @@ export function AIReport({ projectId, projectTitle = 'Research Report', response
         <div>
           <div className="flex items-center gap-2 mb-4">
             <BarChart2 size={15} className="text-ink-muted" />
-            <h2 className="font-display font-semibold text-ink text-lg">Question insights</h2>
+            <h2
+              className="font-display font-light text-ink"
+              style={{ fontSize: '18px', letterSpacing: '-0.01em' }}
+            >
+              Question insights
+            </h2>
           </div>
           <div className="space-y-3">
             {(reportData.question_insights ?? []).map((insight, i) => (
-              <div key={i} className="card p-4">
+              <div
+                key={i}
+                className="p-4"
+                style={{ backgroundColor: 'rgba(15,15,15,0.03)', borderRadius: '4px' }}
+              >
                 <div className="flex items-start gap-3">
                   <span className={clsx(
                     'flex-shrink-0 px-1.5 py-0.5 rounded text-xs font-mono font-medium mt-0.5',
@@ -281,12 +356,21 @@ export function AIReport({ projectId, projectTitle = 'Research Report', response
         <div>
           <div className="flex items-center gap-2 mb-4">
             <TrendingUp size={15} className="text-ink-muted" />
-            <h2 className="font-display font-semibold text-ink text-lg">Themes</h2>
-            <span className="text-xs text-ink-faint">From open text responses</span>
+            <h2
+              className="font-display font-light text-ink"
+              style={{ fontSize: '18px', letterSpacing: '-0.01em' }}
+            >
+              Themes
+            </h2>
+            <span className="text-xs text-ink-faint">from open text responses</span>
           </div>
           <div className="space-y-2">
             {report.themes.map((theme, i) => (
-              <div key={i} className="card overflow-hidden">
+              <div
+                key={i}
+                className="overflow-hidden"
+                style={{ backgroundColor: 'rgba(15,15,15,0.03)', borderRadius: '4px' }}
+              >
                 <button
                   className="w-full flex items-center justify-between p-4 text-left"
                   onClick={() => toggleTheme(i)}

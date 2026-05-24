@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerSideClient } from '@/lib/supabase-server'
 import { Question, ParticipantResponse, QuestionResponse } from '@/types'
 
+const PLAN_REPORT_LIMITS: Record<string, number> = {
+  free:    1,
+  starter: 2,
+  pro:     5,
+}
+
 export async function POST(req: NextRequest) {
   try {
     const { project_id } = await req.json()
@@ -25,11 +31,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 })
     }
 
-    // Fetch responses
+    // Fetch responses — exclude researcher-excluded ones
     const { data: responses, error: responsesError } = await supabase
       .from('responses')
       .select('*')
       .eq('project_id', project_id)
+      .neq('flag_status', 'reviewed_excluded')
       .order('submitted_at', { ascending: true })
 
     if (responsesError) throw responsesError
@@ -38,7 +45,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'No responses to analyse' }, { status: 400 })
     }
 
-    // ── Check usage cap ───────────────────────────────────────
+    // ── Fetch and validate usage ──────────────────────────────
 
     let { data: usage } = await supabase
       .from('researcher_usage')
@@ -46,7 +53,6 @@ export async function POST(req: NextRequest) {
       .eq('researcher_id', user.id)
       .single()
 
-    // Auto-create usage record if missing
     if (!usage) {
       const { data: newUsage } = await supabase
         .from('researcher_usage')
@@ -56,18 +62,60 @@ export async function POST(req: NextRequest) {
       usage = newUsage
     }
 
-    const responseCap = usage?.response_cap ?? 50
     const plan = usage?.plan ?? 'free'
+    const reportLimit = PLAN_REPORT_LIMITS[plan] ?? 1
 
-    // Cap the responses sent to Claude — never block data collection
+    // Reset monthly count if we're in a new month
+    const resetAt = usage?.reports_reset_at ? new Date(usage.reports_reset_at) : new Date()
+    const now = new Date()
+    const isNewMonth =
+      now.getFullYear() > resetAt.getFullYear() ||
+      now.getMonth() > resetAt.getMonth()
+
+    let reportsThisMonth = usage?.reports_this_month ?? 0
+
+    if (isNewMonth) {
+      // Reset the counter
+      await supabase
+        .from('researcher_usage')
+        .update({
+          reports_this_month: 0,
+          reports_reset_at: now.toISOString(),
+        })
+        .eq('researcher_id', user.id)
+      reportsThisMonth = 0
+    }
+
+    // ── Enforce the limit ─────────────────────────────────────
+
+    if (reportsThisMonth >= reportLimit) {
+      return NextResponse.json({
+        error: 'report_limit_reached',
+        message: `You've used all ${reportLimit} AI report${reportLimit !== 1 ? 's' : ''} included in your ${plan} plan this month. Upgrade to generate more.`,
+        reports_used: reportsThisMonth,
+        report_limit: reportLimit,
+        plan,
+      }, { status: 403 })
+    }
+
+    // ── Cap responses sent to Claude ──────────────────────────
+
+    const responseCap = usage?.response_cap ?? 50
     const cappedResponses = responses.slice(0, responseCap)
     const isCapped = responses.length > responseCap
-
     const questions = project.questions as Question[]
 
     // ── Build the prompt ──────────────────────────────────────
 
-    const prompt = buildPrompt(project.title, project.description, questions, cappedResponses as ParticipantResponse[], isCapped, responses.length, responseCap)
+    const prompt = buildPrompt(
+      project.title,
+      project.description,
+      questions,
+      cappedResponses as ParticipantResponse[],
+      isCapped,
+      responses.length,
+      responseCap
+    )
 
     // ── Call Anthropic API ────────────────────────────────────
 
@@ -79,7 +127,7 @@ export async function POST(req: NextRequest) {
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: 'claude-opus-4-6',
+        model: 'claude-sonnet-4-20250514',
         max_tokens: 4000,
         system: `You are a research analyst who writes reports for everyday people — not just academics or experts. Your job is to take questionnaire data and explain what it means in plain, simple English that anyone can understand.
 
@@ -103,7 +151,6 @@ Rules for your writing:
     const anthropicData = await anthropicRes.json()
     const rawText = anthropicData.content?.[0]?.text || ''
 
-    // Parse JSON response
     let reportData
     try {
       const cleaned = rawText.replace(/```json|```/g, '').trim()
@@ -113,7 +160,7 @@ Rules for your writing:
       throw new Error('Failed to parse AI response')
     }
 
-    // ── Save report to Supabase ───────────────────────────────
+    // ── Save report ───────────────────────────────────────────
 
     const { data: savedReport, error: saveError } = await supabase
       .from('ai_reports')
@@ -132,10 +179,12 @@ Rules for your writing:
 
     if (saveError) throw saveError
 
-    // Update responses_analysed count
+    // ── Increment report count ────────────────────────────────
+
     await supabase
       .from('researcher_usage')
       .update({
+        reports_this_month: reportsThisMonth + 1,
         responses_analysed: cappedResponses.length,
         updated_at: new Date().toISOString(),
       })
@@ -147,6 +196,8 @@ Rules for your writing:
       total_responses: responses.length,
       analysed_responses: cappedResponses.length,
       response_cap: responseCap,
+      reports_used: reportsThisMonth + 1,
+      report_limit: reportLimit,
     })
 
   } catch (err: any) {
@@ -168,13 +219,11 @@ function buildPrompt(
 ): string {
   const responseCount = responses.length
 
-  // Build per-question data
   const questionSummaries = questions.map(q => {
     const allAnswers = responses
       .flatMap(r => r.responses || [])
       .filter((r: QuestionResponse) => r.question_id === q.id)
 
-    // Exclude N/A responses from analysis
     const answers = allAnswers.filter((r: QuestionResponse) => r.value !== '__NA__')
     const naCount = allAnswers.length - answers.length
 
@@ -183,17 +232,13 @@ function buildPrompt(
     let dataBlock = ''
 
     if (q.type === 'scale') {
-      const values = answers
-        .map((a: QuestionResponse) => Number(a.value))
-        .filter(v => !isNaN(v))
+      const values = answers.map((a: QuestionResponse) => Number(a.value)).filter(v => !isNaN(v))
       const avg = values.reduce((a, b) => a + b, 0) / values.length
-      const min = Math.min(...values)
-      const max = Math.max(...values)
       const distribution: Record<number, number> = {}
       values.forEach(v => { distribution[v] = (distribution[v] || 0) + 1 })
       dataBlock = `Type: Scale (${(q as any).min}–${(q as any).max})
 Average: ${avg.toFixed(2)}
-Min: ${min}, Max: ${max}
+Min: ${Math.min(...values)}, Max: ${Math.max(...values)}
 Distribution: ${Object.entries(distribution).sort(([a], [b]) => Number(a) - Number(b)).map(([k, v]) => `${k}: ${v} responses`).join(', ')}`
     }
 
@@ -219,22 +264,21 @@ No: ${no} (${Math.round(no / answers.length * 100)}%)`
     }
 
     else if (q.type === 'open_text') {
-      const texts = answers
-        .map((a: QuestionResponse) => String(a.value).trim())
-        .filter(v => v.length > 0)
+      const texts = answers.map((a: QuestionResponse) => String(a.value).trim()).filter(v => v.length > 0)
       dataBlock = `Type: Open text
 Responses (${texts.length}):
 ${texts.map((t, i) => `  ${i + 1}. "${t}"`).join('\n')}`
     }
 
-    const naNote = naCount > 0 ? `\nNote: ${naCount} participant(s) marked this question as N/A and are excluded from the above.` : ''
-    const coverageNote = answers.length < responseCount ? `\nCOVERAGE: Only ${answers.length} of ${responseCount} total participants answered this question.` : ''
+    const naNote = naCount > 0 ? `\nNote: ${naCount} participant(s) marked this question as N/A — excluded from analysis.` : ''
+    const coverageNote = answers.length < responseCount ? `\nCOVERAGE: Only ${answers.length} of ${responseCount} participants answered this question.` : ''
+
     return `QUESTION: "${q.text}"
 ${dataBlock}${naNote}${coverageNote}`
   }).filter(Boolean)
 
   const cappedNote = isCapped
-    ? `\nNOTE: This researcher has ${totalResponses} total responses but their plan allows analysis of ${responseCap}. This report is based on the first ${responseCap} responses only. Mention this clearly in your sample_note.`
+    ? `\nNOTE: This project has ${totalResponses} total responses but the researcher's plan allows analysis of ${responseCap}. This report is based on the first ${responseCap} responses only. Mention this clearly in your sample_note.`
     : ''
 
   return `You are analysing responses to a research questionnaire.
@@ -258,18 +302,18 @@ Produce a research report as a JSON object with this exact structure:
     {
       "question": "exact question text",
       "type": "scale|multiple_choice|yes_no|open_text",
-      "response_count": number of responses that answered this specific question,
-      "total_responses": total number of responses collected for the project,
-      "coverage_note": "only include this if response_count is less than total_responses — explain plainly that this question was added later or not all participants answered it",
+      "response_count": number,
+      "total_responses": number,
+      "coverage_note": "only if response_count differs from total_responses",
       "headline": "one sentence plain-language finding",
-      "detail": "2-3 sentences expanding on what the data means, not just what it says. Include specific numbers."
+      "detail": "2-3 sentences expanding on what the data means. Include specific numbers."
     }
   ],
   "themes": [
     {
       "label": "short theme name (2-4 words)",
       "description": "one sentence describing this theme",
-      "frequency": number of responses that touch on this theme,
+      "frequency": number,
       "supporting_quotes": ["quote 1", "quote 2"]
     }
   ],
@@ -282,15 +326,11 @@ Produce a research report as a JSON object with this exact structure:
 }
 
 Rules:
-- Write everything in the same language as the open text responses. If responses are in Zulu, write the report in Zulu. If in French, write in French. If mixed, use the dominant language.
-- Themes should only come from open text responses
-- Include 3-5 themes if there are open text questions, otherwise omit the themes array
-- Key findings should be the 3 most important things someone making a decision would want to know
-- Be specific with numbers — "7 out of 10 people said X" or "67% said X", never "most respondents said X"
-- Exclude any responses marked as N/A from your analysis — they mean the question did not apply to that person
-- For each question, include response_count (how many answered it) and total_responses (total in the project). If these differ, add a coverage_note explaining this plainly — e.g. "This question was added after the first 5 responses were collected, so only 3 people answered it"
-- Never treat a low response count on a question as meaning people skipped it — it may just be a newer question
-- If sample size is under 10, note this clearly and say findings should be treated as early signals, not firm conclusions
-- Write summaries and insights a non-researcher could immediately act on
+- Write in the same language as the open text responses
+- Themes only from open text responses — include 3-5 if open text questions exist, otherwise omit
+- Key findings are the 3 most important things someone making a decision would want to know
+- Be specific with numbers — never say "most respondents"
+- Exclude N/A responses from analysis
+- If sample size is under 10, note findings should be treated as early signals
 - Return only valid JSON, nothing else`
 }
