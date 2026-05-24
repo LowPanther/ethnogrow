@@ -58,15 +58,17 @@ export default function DashboardClient({ initialProjects, usage }: DashboardCli
   }
 
   return (
-    <main className="max-w-7xl mx-auto px-8 py-12">
-      <div className="grid grid-cols-[1fr_280px] gap-12 items-start">
+    <main className="max-w-7xl mx-auto px-4 md:px-8 py-8 md:py-12">
+      {/* On mobile: single column, usage indicator below projects.
+          On desktop: projects on left, sticky usage sidebar on right. */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-8 lg:gap-12 items-start">
 
         <div>
-          <div className="flex items-start justify-between mb-10">
+          <div className="flex items-start justify-between mb-8 md:mb-10">
             <div>
               <h1
                 className="font-display font-light text-ink"
-                style={{ fontSize: '32px', letterSpacing: '-0.02em', lineHeight: '1.2' }}
+                style={{ fontSize: 'clamp(24px, 5vw, 32px)', letterSpacing: '-0.02em', lineHeight: '1.2' }}
               >
                 Your projects
               </h1>
@@ -77,7 +79,7 @@ export default function DashboardClient({ initialProjects, usage }: DashboardCli
                 }
               </p>
             </div>
-            <Link href="/dashboard/new" className="btn-primary">
+            <Link href="/dashboard/new" className="btn-primary flex-shrink-0">
               <Plus size={15} />
               New project
             </Link>
@@ -111,7 +113,7 @@ export default function DashboardClient({ initialProjects, usage }: DashboardCli
           )}
 
           {archivedProjects.length > 0 && (
-            <div className="mt-16 pt-16 border-t border-paper-border">
+            <div className="mt-12 md:mt-16 pt-12 md:pt-16 border-t border-paper-border">
               <p className="text-xs font-medium tracking-widest uppercase text-ink-faint mb-6">
                 Archived ({archivedProjects.length})
               </p>
@@ -129,7 +131,8 @@ export default function DashboardClient({ initialProjects, usage }: DashboardCli
           )}
         </div>
 
-        <aside className="sticky top-[72px]">
+        {/* Usage indicator — sits below content on mobile, sticky sidebar on desktop */}
+        <aside className="lg:sticky lg:top-[72px]">
           <UsageIndicator
             responsesAnalysed={usage?.responses_analysed ?? 0}
             responseCap={usage?.response_cap ?? 50}
@@ -176,9 +179,7 @@ function ProjectCard({
   }, [menuOpen])
 
   return (
-    <div
-      className={clsx('tint-card p-6 group relative', isArchived && 'opacity-50')}
-    >
+    <div className={clsx('tint-card p-6 group relative', isArchived && 'opacity-50')}>
       <div className="flex items-center justify-between mb-4">
         <span className={clsx('flex items-center gap-1.5 text-xs font-medium', statusStyle.text)}>
           <span className={clsx('w-1.5 h-1.5 rounded-full flex-shrink-0', statusStyle.dot)} />
@@ -296,7 +297,7 @@ function DeleteModal({
 function EmptyDashboard() {
   return (
     <div
-      className="flex flex-col items-center justify-center py-24 text-center"
+      className="flex flex-col items-center justify-center py-20 md:py-24 text-center"
       style={{ backgroundColor: 'rgba(15,15,15,0.02)', borderRadius: '4px' }}
     >
       <p className="text-2xl text-ink-faint mb-6">✦</p>
