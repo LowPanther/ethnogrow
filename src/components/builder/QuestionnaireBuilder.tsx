@@ -182,56 +182,60 @@ export function QuestionnaireBuilder({ initialProject, onSaved, onPublished, pen
   return (
     <div className="min-h-screen bg-paper">
 
-      {/* Sub-header */}
+      {/* Sub-header — breadcrumb left, actions right. On mobile actions wrap below. */}
       <header className="sticky top-0 z-40 backdrop-blur-sm border-b border-paper-border" style={{ backgroundColor: 'rgba(250,250,248,0.9)' }}>
-        <div className="max-w-7xl mx-auto px-8 h-12 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-2 text-sm">
-            <a
-              href="/dashboard"
-              className="text-ink-muted hover:text-ink transition-colors"
-              style={{ letterSpacing: '-0.01em' }}
-            >
-              Projects
-            </a>
-            <span className="text-ink-faint">/</span>
-            <span className="text-ink-muted truncate max-w-xs">
-              {title || 'Untitled project'}
-            </span>
-          </div>
+        <div className="max-w-7xl mx-auto px-4 md:px-8">
+          {/* On mobile: two rows. On desktop: single row. */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between sm:h-12 py-2 sm:py-0 gap-2">
+            <div className="flex items-center gap-2 text-sm min-w-0">
+              <a
+                href="/dashboard"
+                className="text-ink-muted hover:text-ink transition-colors flex-shrink-0"
+                style={{ letterSpacing: '-0.01em' }}
+              >
+                Projects
+              </a>
+              <span className="text-ink-faint flex-shrink-0">/</span>
+              <span className="text-ink-muted truncate">
+                {title || 'Untitled project'}
+              </span>
+            </div>
 
-          <div className="flex items-center gap-2">
-            {saveState === 'saved' && (
-              <span className="flex items-center gap-1.5 text-xs text-green-700 animate-fade-in">
-                <CheckCircle2 size={12} /> Saved
-              </span>
-            )}
-            {saveState === 'error' && (
-              <span className="flex items-center gap-1.5 text-xs text-red-500 animate-fade-in">
-                <AlertCircle size={12} /> Error saving
-              </span>
-            )}
-            <button
-              onClick={() => handleSave('draft')}
-              disabled={saveState === 'saving'}
-              className="btn-secondary text-xs py-1.5 px-3"
-            >
-              <Save size={12} />
-              {saveState === 'saving' ? 'Saving…' : 'Save draft'}
-            </button>
-            <button
-              onClick={() => handleSave('active')}
-              disabled={!isValid || saveState === 'saving'}
-              className="btn-primary text-xs py-1.5 px-3"
-            >
-              <Share2 size={12} />
-              Publish & share
-            </button>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              {saveState === 'saved' && (
+                <span className="flex items-center gap-1.5 text-xs text-green-700 animate-fade-in">
+                  <CheckCircle2 size={12} /> Saved
+                </span>
+              )}
+              {saveState === 'error' && (
+                <span className="flex items-center gap-1.5 text-xs text-red-500 animate-fade-in">
+                  <AlertCircle size={12} /> Error saving
+                </span>
+              )}
+              <button
+                onClick={() => handleSave('draft')}
+                disabled={saveState === 'saving'}
+                className="btn-secondary text-xs py-1.5 px-3"
+              >
+                <Save size={12} />
+                {saveState === 'saving' ? 'Saving…' : 'Save draft'}
+              </button>
+              <button
+                onClick={() => handleSave('active')}
+                disabled={!isValid || saveState === 'saving'}
+                className="btn-primary text-xs py-1.5 px-3"
+              >
+                <Share2 size={12} />
+                Publish
+              </button>
+            </div>
           </div>
         </div>
       </header>
 
-      <div className="max-w-7xl mx-auto px-8 py-10">
-        <div className="grid grid-cols-[1fr_260px] gap-10 items-start">
+      <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 md:py-10">
+        {/* On mobile: single column. On desktop: main content + sidebar. */}
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_260px] gap-8 lg:gap-10 items-start">
 
           {/* Main content */}
           <div className="space-y-6">
@@ -246,7 +250,7 @@ export function QuestionnaireBuilder({ initialProject, onSaved, onPublished, pen
                   'outline-none border-b border-transparent focus:border-ink/20 pb-2',
                   'placeholder:text-ink-faint transition-colors'
                 )}
-                style={{ fontSize: '28px', letterSpacing: '-0.025em', lineHeight: '1.2' }}
+                style={{ fontSize: 'clamp(22px, 4vw, 28px)', letterSpacing: '-0.025em', lineHeight: '1.2' }}
               />
               <textarea
                 value={description}
@@ -322,8 +326,8 @@ export function QuestionnaireBuilder({ initialProject, onSaved, onPublished, pen
             )}
           </div>
 
-          {/* Sidebar */}
-          <aside className="space-y-3 sticky top-[60px]">
+          {/* Sidebar — hidden on mobile, sticky on desktop */}
+          <aside className="hidden lg:block space-y-3 sticky top-[60px]">
 
             {/* Stats */}
             <div
@@ -386,7 +390,7 @@ export function QuestionnaireBuilder({ initialProject, onSaved, onPublished, pen
 
 function EmptyState({ onAddQuestion }: { onAddQuestion: (type: QuestionType) => void }) {
   return (
-    <div className="flex flex-col items-center justify-center py-16 text-center">
+    <div className="flex flex-col items-center justify-center py-12 md:py-16 text-center">
       <p className="text-2xl text-ink-faint mb-5">✦</p>
       <h3
         className="font-display font-light text-ink mb-2"

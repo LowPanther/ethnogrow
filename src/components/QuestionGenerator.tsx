@@ -27,6 +27,15 @@ interface QuestionGeneratorProps {
 
 type Step = 'brief' | 'review'
 
+// Safe UUID that works over HTTP (no crypto.randomUUID)
+function generateUUID(): string {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+    const r = Math.random() * 16 | 0
+    const v = c === 'x' ? r : (r & 0x3 | 0x8)
+    return v.toString(16)
+  })
+}
+
 export function QuestionGenerator({ onAccept, onDismiss }: QuestionGeneratorProps) {
   const [step, setStep] = useState<Step>('brief')
   const [topic, setTopic] = useState('')
@@ -93,14 +102,14 @@ export function QuestionGenerator({ onAccept, onDismiss }: QuestionGeneratorProp
 
   if (step === 'brief') {
     return (
-      <div className="max-w-xl mx-auto px-8 py-12">
+      <div className="max-w-xl mx-auto px-4 md:px-8 py-10 md:py-12">
         <h1
           className="font-display font-light text-ink mb-2"
-          style={{ fontSize: '32px', letterSpacing: '-0.02em', lineHeight: '1.2' }}
+          style={{ fontSize: 'clamp(24px, 5vw, 32px)', letterSpacing: '-0.02em', lineHeight: '1.2' }}
         >
           Generate with AI
         </h1>
-        <p className="text-sm text-ink-muted leading-relaxed mb-10">
+        <p className="text-sm text-ink-muted leading-relaxed mb-8 md:mb-10">
           Tell us what you want to find out and we'll design a set of questions to help you get there.
           You can review and pick the ones you want before they go into your questionnaire.
         </p>
@@ -221,10 +230,10 @@ export function QuestionGenerator({ onAccept, onDismiss }: QuestionGeneratorProp
   const selectedCount = selectedIndices.size
 
   return (
-    <div className="max-w-xl mx-auto px-8 py-12">
+    <div className="max-w-xl mx-auto px-4 md:px-8 py-10 md:py-12">
       <h1
         className="font-display font-light text-ink mb-2"
-        style={{ fontSize: '28px', letterSpacing: '-0.02em', lineHeight: '1.2' }}
+        style={{ fontSize: 'clamp(22px, 4vw, 28px)', letterSpacing: '-0.02em', lineHeight: '1.2' }}
       >
         {generated.title}
       </h1>
@@ -323,7 +332,8 @@ export function QuestionGenerator({ onAccept, onDismiss }: QuestionGeneratorProp
         })}
       </div>
 
-      <div className="flex items-center justify-between pt-6 border-t border-paper-border">
+      {/* Footer actions — wrap on mobile */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-6 border-t border-paper-border">
         <div className="flex items-center gap-3">
           <button onClick={() => setStep('brief')} className="btn-ghost text-sm">
             ← Edit brief
@@ -343,7 +353,7 @@ export function QuestionGenerator({ onAccept, onDismiss }: QuestionGeneratorProp
           className="btn-primary"
         >
           <Check size={14} />
-          Add {selectedCount} question{selectedCount !== 1 ? 's' : ''} to questionnaire
+          Add {selectedCount} question{selectedCount !== 1 ? 's' : ''}
           <ArrowRight size={14} />
         </button>
       </div>
@@ -355,7 +365,7 @@ export function QuestionGenerator({ onAccept, onDismiss }: QuestionGeneratorProp
 
 function buildQuestion(q: GeneratedQuestion, order: number): Question {
   const base = {
-    id: crypto.randomUUID(),
+    id: generateUUID(),
     type: q.type,
     text: q.text,
     required: q.required ?? true,
