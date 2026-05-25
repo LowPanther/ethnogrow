@@ -56,13 +56,14 @@ interface QuestionnaireBuilderProps {
   initialProject?: Partial<Project>
   onSaved?: (project: Project) => void
   onPublished?: () => void
+  onBack?: () => void
   pendingQuestion?: Question | null
   onPendingQuestionConsumed?: () => void
 }
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error'
 
-export function QuestionnaireBuilder({ initialProject, onSaved, onPublished, pendingQuestion, onPendingQuestionConsumed }: QuestionnaireBuilderProps) {
+export function QuestionnaireBuilder({ initialProject, onSaved, onPublished, onBack, pendingQuestion, onPendingQuestionConsumed }: QuestionnaireBuilderProps) {
   const [title, setTitle] = useState(initialProject?.title || '')
   const [description, setDescription] = useState(initialProject?.description || '')
   const [questions, setQuestions] = useState<Question[]>(initialProject?.questions || [])
@@ -188,13 +189,23 @@ export function QuestionnaireBuilder({ initialProject, onSaved, onPublished, pen
           {/* On mobile: two rows. On desktop: single row. */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between sm:h-12 py-2 sm:py-0 gap-2">
             <div className="flex items-center gap-2 text-sm min-w-0">
-              <a
-                href="/dashboard"
-                className="text-ink-muted hover:text-ink transition-colors flex-shrink-0"
-                style={{ letterSpacing: '-0.01em' }}
-              >
-                Projects
-              </a>
+              {onBack ? (
+                <button
+                  onClick={onBack}
+                  className="text-ink-muted hover:text-ink transition-colors flex-shrink-0"
+                  style={{ letterSpacing: '-0.01em' }}
+                >
+                  Projects
+                </button>
+              ) : (
+                <a
+                  href="/dashboard"
+                  className="text-ink-muted hover:text-ink transition-colors flex-shrink-0"
+                  style={{ letterSpacing: '-0.01em' }}
+                >
+                  Projects
+                </a>
+              )}
               <span className="text-ink-faint flex-shrink-0">/</span>
               <span className="text-ink-muted truncate">
                 {title || 'Untitled project'}

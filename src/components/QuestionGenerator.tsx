@@ -22,7 +22,6 @@ interface GeneratedSet {
 
 interface QuestionGeneratorProps {
   onAccept: (title: string, description: string, questions: Question[]) => void
-  onDismiss: () => void
 }
 
 type Step = 'brief' | 'review'
@@ -36,7 +35,7 @@ function generateUUID(): string {
   })
 }
 
-export function QuestionGenerator({ onAccept, onDismiss }: QuestionGeneratorProps) {
+export function QuestionGenerator({ onAccept }: QuestionGeneratorProps) {
   const [step, setStep] = useState<Step>('brief')
   const [topic, setTopic] = useState('')
   const [goal, setGoal] = useState('')
@@ -102,7 +101,7 @@ export function QuestionGenerator({ onAccept, onDismiss }: QuestionGeneratorProp
 
   if (step === 'brief') {
     return (
-      <div className="max-w-xl mx-auto px-4 md:px-8 py-10 md:py-12">
+      <div className="max-w-lg">
         <h1
           className="font-display font-light text-ink mb-2"
           style={{ fontSize: 'clamp(24px, 5vw, 32px)', letterSpacing: '-0.02em', lineHeight: '1.2' }}
@@ -198,10 +197,7 @@ export function QuestionGenerator({ onAccept, onDismiss }: QuestionGeneratorProp
             </div>
           )}
 
-          <div className="flex items-center justify-between pt-2">
-            <button onClick={onDismiss} className="btn-ghost text-sm">
-              Cancel
-            </button>
+          <div className="flex justify-end pt-2">
             <button
               onClick={handleGenerate}
               disabled={!topic.trim() || !goal.trim() || loading}
@@ -230,7 +226,7 @@ export function QuestionGenerator({ onAccept, onDismiss }: QuestionGeneratorProp
   const selectedCount = selectedIndices.size
 
   return (
-    <div className="max-w-xl mx-auto px-4 md:px-8 py-10 md:py-12">
+    <div className="max-w-lg">
       <h1
         className="font-display font-light text-ink mb-2"
         style={{ fontSize: 'clamp(22px, 4vw, 28px)', letterSpacing: '-0.02em', lineHeight: '1.2' }}
@@ -332,7 +328,7 @@ export function QuestionGenerator({ onAccept, onDismiss }: QuestionGeneratorProp
         })}
       </div>
 
-      {/* Footer actions — wrap on mobile */}
+      {/* Footer actions */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-6 border-t border-paper-border">
         <div className="flex items-center gap-3">
           <button onClick={() => setStep('brief')} className="btn-ghost text-sm">

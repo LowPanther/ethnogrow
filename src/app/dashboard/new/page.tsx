@@ -5,7 +5,7 @@ import { useState } from 'react'
 import { QuestionnaireBuilder } from '@/components/builder/QuestionnaireBuilder'
 import { QuestionGenerator } from '@/components/QuestionGenerator'
 import { Project, Question } from '@/types'
-import { Wand2, PenLine } from 'lucide-react'
+import { Wand2, PenLine, ArrowLeft } from 'lucide-react'
 
 type Mode = 'choose' | 'generate' | 'build'
 
@@ -23,22 +23,52 @@ export default function NewProjectPage() {
     setMode('build')
   }
 
-  if (mode === 'choose') {
-    return (
-      <div className="min-h-screen bg-paper flex flex-col items-center justify-center px-4 md:px-8">
-        <div className="w-full max-w-lg">
+  function handleBack() {
+    if (mode === 'choose') {
+      router.push('/dashboard')
+    } else {
+      setMode('choose')
+      setGeneratedProject(null)
+    }
+  }
 
+  const backLabel = mode === 'choose' ? 'Dashboard' : 'New project'
+
+  // Builder has its own full-page layout with sub-header — render it standalone
+  if (mode === 'build') {
+    return (
+      <QuestionnaireBuilder
+        initialProject={generatedProject || undefined}
+        onSaved={handleSaved}
+        onBack={handleBack}
+      />
+    )
+  }
+
+  return (
+    <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 md:py-12">
+
+      {/* Page-level back button */}
+      <button
+        onClick={handleBack}
+        className="inline-flex items-center gap-2 text-sm text-ink-muted hover:text-ink transition-colors mb-10 md:mb-12"
+      >
+        <ArrowLeft size={14} />
+        {backLabel}
+      </button>
+
+      {mode === 'choose' && (
+        <div className="max-w-lg">
           <h1
-            className="font-display font-light text-ink mb-2 text-center"
-            style={{ fontSize: '32px', letterSpacing: '-0.02em', lineHeight: '1.2' }}
+            className="font-display font-light text-ink mb-2"
+            style={{ fontSize: 'clamp(24px, 5vw, 32px)', letterSpacing: '-0.02em', lineHeight: '1.2' }}
           >
             New project
           </h1>
-          <p className="text-sm text-ink-muted text-center mb-8 md:mb-10">
+          <p className="text-sm text-ink-muted mb-8 md:mb-10">
             How would you like to build your questionnaire?
           </p>
 
-          {/* Stack cards on mobile, side by side on sm+ */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <button
               onClick={() => setMode('generate')}
@@ -82,25 +112,15 @@ export default function NewProjectPage() {
               </p>
             </button>
           </div>
-
         </div>
-      </div>
-    )
-  }
+      )}
 
-  if (mode === 'generate') {
-    return (
-      <QuestionGenerator
-        onAccept={handleGeneratorAccept}
-        onDismiss={() => setMode('choose')}
-      />
-    )
-  }
+      {mode === 'generate' && (
+        <QuestionGenerator
+          onAccept={handleGeneratorAccept}
+        />
+      )}
 
-  return (
-    <QuestionnaireBuilder
-      initialProject={generatedProject || undefined}
-      onSaved={handleSaved}
-    />
+    </div>
   )
 }
