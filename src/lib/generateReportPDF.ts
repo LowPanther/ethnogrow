@@ -19,19 +19,19 @@ export interface ReportKeyFinding {
 
 export interface ReportQuestionInsight {
   question: string
-  insight:  string
+  headline: string
   detail:   string
 }
 
 export interface ReportTheme {
-  theme:    string
-  mentions: number
-  quotes?:  string[]
+  label:              string
+  frequency:          number
+  supporting_quotes?: string[]
 }
 
 export interface ReportData {
   summary?:           string
-  key_findings?:      ReportKeyFinding[]
+  key_findings?:      any[]
   question_insights?: ReportQuestionInsight[]
   themes?:            ReportTheme[]
   sample_note?:       string
@@ -203,7 +203,6 @@ function drawInnerHeader(doc: PDFKit.PDFDocument, projectTitle: string): void {
   doc.font(FONTS.body()).fontSize(7.5).fillColor(C.headerGrey)
      .text(`· ${display}`, ML + 68, HEADER_BAR_H + 7.5, { lineBreak: false })
 
-  // Page number — approximate right alignment
   const pageStr = `Page ${(doc as any)._pageBuffer?.length ?? doc.bufferedPageRange().count}`
   doc.fontSize(7.5).fillColor(C.muted)
      .text(pageStr, PAGE_W - MR - 40, HEADER_BAR_H + 7.5, { lineBreak: false, width: 40, align: 'right' })
@@ -318,10 +317,13 @@ function buildSummary(doc: PDFKit.PDFDocument, text: string, y: number, state: S
   return y + 20
 }
 
-function buildKeyFindings(doc: PDFKit.PDFDocument, findings: ReportKeyFinding[], y: number, state: State): number {
+function buildKeyFindings(doc: PDFKit.PDFDocument, findings: any[], y: number, state: State): number {
   y = drawSectionHeader(doc, 'Analysis', 'Key Findings', y, state)
   findings.forEach((f, i) => {
-    y = drawFindingBox(doc, i + 1, f.title, f.body || '', y, state)
+    // Support both plain strings and {title, body} objects
+    const title = typeof f === 'string' ? f : f.title
+    const body  = typeof f === 'string' ? '' : (f.body || '')
+    y = drawFindingBox(doc, i + 1, title, body, y, state)
     y += 8
   })
   return y + 12
@@ -334,10 +336,9 @@ function buildQuestionInsights(doc: PDFKit.PDFDocument, questions: ReportQuestio
     doc.font(FONTS.display()).fontSize(10)
     const qH = measureH(doc, q.question, CW, 15)
     doc.font(FONTS.bodyMedium()).fontSize(9.5)
-    const iH = measureH(doc, q.insight, CW, 14)
+    const iH = measureH(doc, q.headline, CW, 14)
     doc.font(FONTS.body()).fontSize(9)
     const dH = measureH(doc, q.detail, CW, 14)
-    const blockH = qH + 6 + iH + 6 + dH + 32
 
     if (y + qH + 6 + iH + 20 > PAGE_H - MB - FOOTER_H) {
       doc.addPage()
@@ -350,7 +351,7 @@ function buildQuestionInsights(doc: PDFKit.PDFDocument, questions: ReportQuestio
     y += drawWrapped(doc, q.question, ML, y, CW, 15) + 6
 
     doc.font(FONTS.bodyMedium()).fontSize(9.5).fillColor(C.ink)
-    y += drawWrapped(doc, q.insight, ML, y, CW, 14) + 6
+    y += drawWrapped(doc, q.headline, ML, y, CW, 14) + 6
 
     doc.font(FONTS.body()).fontSize(9).fillColor(C.muted)
     y += drawWrapped(doc, q.detail, ML, y, CW, 14) + 12
@@ -366,19 +367,19 @@ function buildThemes(doc: PDFKit.PDFDocument, themes: ReportTheme[], y: number, 
   y = drawSectionHeader(doc, 'Patterns', 'Themes', y, state)
 
   themes.forEach(t => {
-    const firstQuoteH = t.quotes?.length ? BOX_PAD * 2 + 30 : 0
+    const firstQuoteH = t.supporting_quotes?.length ? BOX_PAD * 2 + 30 : 0
     y = ensureSpace(doc, y, 14 + 13 + 8 + firstQuoteH, state)
 
     doc.font(FONTS.bodyMedium()).fontSize(9.5).fillColor(C.ink)
-    drawWrapped(doc, t.theme, ML, y, CW, 14)
+    drawWrapped(doc, t.label, ML, y, CW, 14)
     y += 14 + 3
 
     doc.font(FONTS.body()).fontSize(8).fillColor(C.muted)
-    doc.text(`${t.mentions} mention${t.mentions !== 1 ? 's' : ''}`, ML, y, { lineBreak: false })
+    doc.text(`${t.frequency} mention${t.frequency !== 1 ? 's' : ''}`, ML, y, { lineBreak: false })
     y += 13 + 8
 
-    if (t.quotes?.length) {
-      t.quotes.forEach(q => {
+    if (t.supporting_quotes?.length) {
+      t.supporting_quotes.forEach((q: string) => {
         y = drawQuoteBox(doc, q, y, state)
         y += 7
       })
