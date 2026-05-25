@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
     // Fetch project — RLS ensures researcher can only access their own
     const { data: project, error: projectError } = await supabase
       .from('projects')
-      .select('id, title, description, user_id')
+      .select('id, title, description, researcher_id')
       .eq('id', projectId)
       .single()
 
@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 })
     }
 
-    if (project.user_id !== user.id) {
+    if (project.researcher_id !== user.id) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
