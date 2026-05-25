@@ -89,11 +89,11 @@ function fp(file: string): string {
 }
 
 const FONTS = {
-  display:       () => fp('Fraunces-Variable.ttf'),
-  displayItalic: () => fp('FrauncesItalic-Variable.ttf'),
-  body:          () => fp('Manrope-Variable.ttf'),
-  bodyMedium:    () => fp('Manrope-Medium.ttf'),
-  bodyBold:      () => fp('Manrope-Bold.ttf'),
+  display:       () => fp('Fraunces/Fraunces-VariableFont_SOFT,WONK,opsz,wght.ttf'),
+  displayItalic: () => fp('Fraunces/Fraunces-Italic-VariableFont_SOFT,WONK,opsz,wght.ttf'),
+  body:          () => fp('Manrope/static/Manrope-Regular.ttf'),
+  bodyMedium:    () => fp('Manrope/static/Manrope-Medium.ttf'),
+  bodyBold:      () => fp('Manrope/static/Manrope-Bold.ttf'),
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
