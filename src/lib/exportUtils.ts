@@ -106,131 +106,23 @@ export function exportResponsesCSV(
   // ─── PDF Export ───────────────────────────────────────────────────────────────
   
   export async function exportReportPDF(report: any, projectTitle: string) {
-    // Dynamically import jsPDF to avoid SSR issues
-    const { jsPDF } = await import('jspdf')
-    const doc = new jsPDF({ unit: 'mm', format: 'a4' })
+    const res = await fetch('/api/export/report', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ projectId: report.project_id }),
+    })
   
-    const pageWidth = doc.internal.pageSize.getWidth()
-    const pageHeight = doc.internal.pageSize.getHeight()
-    const margin = 20
-    const contentWidth = pageWidth - margin * 2
-    let y = margin
-  
-    function checkPageBreak(needed: number = 10) {
-      if (y + needed > pageHeight - margin) {
-        doc.addPage()
-        y = margin
-      }
+    if (!res.ok) {
+      throw new Error('PDF generation failed')
     }
   
-    function addText(text: string, fontSize: number, bold: boolean = false, color: [number, number, number] = [15, 30, 39]) {
-      doc.setFontSize(fontSize)
-      doc.setFont('helvetica', bold ? 'bold' : 'normal')
-      doc.setTextColor(...color)
-      const lines = doc.splitTextToSize(text, contentWidth)
-      checkPageBreak(lines.length * (fontSize * 0.4) + 4)
-      doc.text(lines, margin, y)
-      y += lines.length * (fontSize * 0.4) + 4
-    }
-  
-    function addDivider() {
-      checkPageBreak(8)
-      doc.setDrawColor(209, 209, 209)
-      doc.line(margin, y, pageWidth - margin, y)
-      y += 8
-    }
-  
-    function addSpacer(height: number = 6) {
-      y += height
-    }
-  
-    // ── Cover ──
-    doc.setFillColor(12, 30, 39)
-    doc.rect(0, 0, pageWidth, 50, 'F')
-  
-    doc.setFontSize(22)
-    doc.setFont('helvetica', 'bold')
-    doc.setTextColor(255, 255, 255)
-    doc.text(projectTitle, margin, 25)
-  
-    doc.setFontSize(11)
-    doc.setFont('helvetica', 'normal')
-    doc.setTextColor(200, 215, 220)
-    doc.text('AI Research Report · Ethnogrow', margin, 35)
-    doc.text(`Generated ${new Date(report.generated_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}`, margin, 43)
-  
-    y = 65
-  
-    // ── Meta ──
-    addText(`Based on ${report.response_count} response${report.response_count !== 1 ? 's' : ''}`, 10, false, [118, 118, 118])
-    addSpacer(4)
-    addDivider()
-  
-    // ── Summary ──
-    addText('Summary', 14, true)
-    addSpacer(2)
-    addText(report.summary, 10)
-    addSpacer(6)
-  
-    // ── Key findings ──
-    if (report.key_findings?.length > 0) {
-      addDivider()
-      addText('Key Findings', 14, true)
-      addSpacer(2)
-      report.key_findings.forEach((finding: string, i: number) => {
-        checkPageBreak(15)
-        addText(`${i + 1}.  ${finding}`, 10)
-        addSpacer(2)
-      })
-    }
-  
-    // ── Question insights ──
-    if (report.question_insights?.length > 0) {
-      addSpacer(4)
-      addDivider()
-      addText('Question Insights', 14, true)
-      addSpacer(2)
-      report.question_insights.forEach((insight: any) => {
-        checkPageBreak(20)
-        addText(insight.question, 9, false, [118, 118, 118])
-        addText(insight.headline, 11, true)
-        addText(insight.detail, 10)
-        addSpacer(4)
-      })
-    }
-  
-    // ── Themes ──
-    if (report.themes?.length > 0) {
-      addSpacer(4)
-      addDivider()
-      addText('Themes', 14, true)
-      addSpacer(2)
-      report.themes.forEach((theme: any) => {
-        checkPageBreak(20)
-        addText(`${theme.label}  ·  ${theme.frequency} mention${theme.frequency !== 1 ? 's' : ''}`, 11, true)
-        addText(theme.description, 10)
-        if (theme.supporting_quotes?.length > 0) {
-          theme.supporting_quotes.slice(0, 2).forEach((quote: string) => {
-            checkPageBreak(12)
-            addText(`"${quote}"`, 9, false, [118, 118, 118])
-            addSpacer(2)
-          })
-        }
-        addSpacer(4)
-      })
-    }
-  
-    // ── Footer on each page ──
-    const totalPages = doc.getNumberOfPages()
-    for (let i = 1; i <= totalPages; i++) {
-      doc.setPage(i)
-      doc.setFontSize(8)
-      doc.setFont('helvetica', 'normal')
-      doc.setTextColor(180, 180, 180)
-      doc.text(`Ethnogrow · ${projectTitle} · Page ${i} of ${totalPages}`, margin, pageHeight - 10)
-    }
-  
-    doc.save(`${slugify(projectTitle)}-report.pdf`)
+    const blob = await res.blob()
+    const url  = URL.createObjectURL(blob)
+    const a    = document.createElement('a')
+    a.href     = url
+    a.download = `${slugify(projectTitle)}-report.pdf`
+    a.click()
+    URL.revokeObjectURL(url)
   }
   
   export async function exportResponsesPDF(
