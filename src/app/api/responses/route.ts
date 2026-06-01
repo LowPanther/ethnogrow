@@ -1,4 +1,4 @@
-import { createServerSideClient } from '@/lib/supabase-server'
+import { createServiceRoleClient } from '@/lib/supabase-server'
 import { NextRequest, NextResponse } from 'next/server'
 import { detectFlags } from '@/lib/questions'
 import { Question } from '@/types'
@@ -23,7 +23,7 @@ async function hashEmail(email: string): Promise<string> {
 
 export async function POST(req: NextRequest) {
   try {
-    const supabase = createServerSideClient()
+    const supabase = createServiceRoleClient()
     const body = await req.json()
 
     const {
@@ -31,8 +31,8 @@ export async function POST(req: NextRequest) {
       session_id,
       responses,
       completion_time_seconds,
-      email,      // plain text — used for allowlist check and hashing, never stored
-      email_hash, // pre-computed hash from client as fallback
+      email,
+      email_hash,
     } = body
 
     if (!project_id || !session_id || !responses) {
@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 3. Compute hash server-side if plain email provided (more reliable than client hash)
+    // 3. Compute hash server-side if plain email provided
     let finalHash: string | undefined = email_hash
     if (email) {
       finalHash = await hashEmail(email)
