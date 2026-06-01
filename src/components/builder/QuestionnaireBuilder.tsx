@@ -142,7 +142,7 @@ export function QuestionnaireBuilder({
     if (pendingQuestion) {
       setQuestions(prev => {
         if (prev.find(q => q.id === pendingQuestion.id)) return prev
-        return [...prev, { parent_id: null, ...pendingQuestion, order: prev.length }]
+        return [...prev, { ...pendingQuestion, parent_id: pendingQuestion.parent_id ?? null, order: prev.length }]
       })
       setActiveQuestionId(pendingQuestion.id)
       onPendingQuestionConsumed?.()
