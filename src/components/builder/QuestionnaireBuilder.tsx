@@ -124,7 +124,7 @@ export function QuestionnaireBuilder({
   const [title, setTitle] = useState(initialProject?.title || '')
   const [description, setDescription] = useState(initialProject?.description || '')
   const [questions, setQuestions] = useState<Question[]>(
-    (initialProject?.questions || []).map(q => ({ parent_id: null, ...q }))
+    (initialProject?.questions || []).map(q => ({ ...q, parent_id: q.parent_id ?? null }))
   )
   const [activeQuestionId, setActiveQuestionId] = useState<string | null>(null)
   const [showTypeMenu, setShowTypeMenu] = useState(false)
