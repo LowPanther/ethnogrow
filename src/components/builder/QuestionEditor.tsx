@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { Question, MultipleChoiceQuestion, ScaleQuestion, OpenTextQuestion, YesNoQuestion, NumericQuestion, ContactDetailsQuestion } from '@/types'
 import { getQuestionTypeMeta } from '@/lib/questions'
 import { clsx } from 'clsx'
-import { Trash2, Plus, GripVertical, ChevronDown, ChevronUp, ToggleLeft, ToggleRight } from 'lucide-react'
+import { Trash2, Plus, GripVertical, ChevronDown, ChevronUp, ToggleLeft, ToggleRight, Unlink } from 'lucide-react'
 
 interface QuestionEditorProps {
   question: Question
@@ -14,10 +14,15 @@ interface QuestionEditorProps {
   onDelete: () => void
   onFocus: () => void
   dragHandleProps?: React.HTMLAttributes<HTMLElement>
+  // Grouping props
+  isChild?: boolean
+  partLabel?: string       // e.g. "Part 1 of 2"
+  onUnlink?: () => void    // only present on child questions
 }
 
 export function QuestionEditor({
   question, index, isActive, onUpdate, onDelete, onFocus, dragHandleProps,
+  isChild, partLabel, onUnlink,
 }: QuestionEditorProps) {
   const meta = getQuestionTypeMeta(question.type)
   const [isExpanded, setIsExpanded] = useState(true)
@@ -39,6 +44,25 @@ export function QuestionEditor({
       }}
       onClick={onFocus}
     >
+      {/* Part label banner */}
+      {partLabel && (
+        <div
+          className="flex items-center justify-between px-4 py-1.5 border-b border-paper-border"
+          style={{ backgroundColor: 'rgba(15,15,15,0.03)' }}
+        >
+          <span className="text-xs font-mono text-ink-faint">{partLabel}</span>
+          {isChild && onUnlink && (
+            <button
+              onClick={e => { e.stopPropagation(); onUnlink() }}
+              className="flex items-center gap-1 text-xs text-ink-faint hover:text-ink transition-colors"
+            >
+              <Unlink size={11} />
+              Unlink
+            </button>
+          )}
+        </div>
+      )}
+
       <div className="flex items-start gap-3 p-4">
         <button
           className="flex-shrink-0 mt-1 text-ink-faint hover:text-ink-muted cursor-grab active:cursor-grabbing transition-colors"
@@ -474,7 +498,6 @@ function NumericSettings({ question, onUpdate }: { question: NumericQuestion; on
   )
 }
 
-
 function ContactDetailsSettings({
   question, onUpdate,
 }: {
@@ -483,8 +506,6 @@ function ContactDetailsSettings({
 }) {
   return (
     <div className="space-y-4">
-
-      {/* PII warning */}
       <div
         className="flex items-start gap-3 p-3 text-xs leading-relaxed"
         style={{
@@ -501,7 +522,6 @@ function ContactDetailsSettings({
         </span>
       </div>
 
-      {/* Field toggles */}
       <div className="space-y-3">
         <p className="text-xs font-medium text-ink-muted uppercase tracking-widest">Collect</p>
 
@@ -517,7 +537,6 @@ function ContactDetailsSettings({
                 onClick={e => {
                   e.stopPropagation()
                   const next = { ...question, [field]: !question[field] }
-                  // If turning off, also turn off required
                   if (!next[field]) next[requiredField] = false
                   onUpdate(next as ContactDetailsQuestion)
                 }}
@@ -559,7 +578,6 @@ function ContactDetailsSettings({
         ))}
       </div>
 
-      {/* Require at least one toggle */}
       <div className="flex items-center justify-between pt-2 border-t border-paper-border">
         <div>
           <span className="text-xs text-ink-muted">Require at least one field</span>

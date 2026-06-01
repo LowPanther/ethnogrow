@@ -10,6 +10,7 @@ export type QuestionType =
 
 export interface BaseQuestion {
   id: string
+  parent_id: string | null
   type: QuestionType
   text: string
   required: boolean
@@ -61,7 +62,6 @@ export interface ContactDetailsQuestion extends BaseQuestion {
   name_required: boolean
   email_required: boolean
   phone_required: boolean
-  // When true, participants who skip all fields cannot submit
   require_at_least_one: boolean
 }
 
@@ -112,17 +112,17 @@ export interface ContactDetailsResponse {
 
 // Flag reasons applied automatically based on quality signals
 export type FlagReason =
-  | 'completed_too_quickly'   // Under 30s for any questionnaire
-  | 'open_text_too_short'     // Open text response under 5 characters
-  | 'straight_lining'         // Same scale value selected for every scale question
-  | 'all_na'                  // N/A selected for every question that allowed it
-  | 'duplicate_suspected'     // Same email hash already exists for this project
+  | 'completed_too_quickly'
+  | 'open_text_too_short'
+  | 'straight_lining'
+  | 'all_na'
+  | 'duplicate_suspected'
 
 // Researcher action on a flagged response
 export type FlagStatus =
-  | 'flagged'             // Unreviewed — included in analysis, flag visible
-  | 'reviewed_included'   // Researcher reviewed and decided to include
-  | 'reviewed_excluded'   // Researcher reviewed and decided to exclude
+  | 'flagged'
+  | 'reviewed_included'
+  | 'reviewed_excluded'
 
 export interface ParticipantResponse {
   id: string
@@ -131,7 +131,6 @@ export interface ParticipantResponse {
   submitted_at: string
   session_id: string
   completion_time_seconds?: number
-  // Quality signals
   flag_status?: FlagStatus
   flag_reasons?: FlagReason[]
 }

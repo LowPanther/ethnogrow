@@ -37,7 +37,63 @@ async function hashEmail(email: string): Promise<string> {
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
 }
 
+// ─── Group helpers ────────────────────────────────────────────────────────────
+
+/** Returns the flat ordered list with parents followed by their children */
+function buildOrderedList(questions: Question[]): Question[] {
+  const result: Question[] = []
+  for (const q of questions.filter(q => !q.parent_id)) {
+    result.push(q)
+    result.push(...questions.filter(c => c.parent_id === q.id))
+  }
+  return result
+}
+
+/** Top-level questions only (for progress counter) */
+function getTopLevel(questions: Question[]): Question[] {
+  return questions.filter(q => !q.parent_id)
+}
+
+/** Given a question, return its part label if it belongs to a group, else null */
+function getPartLabel(question: Question, allQuestions: Question[]): string | null {
+  if (!question.parent_id) {
+    // It's a parent — check if it has children
+    const children = allQuestions.filter(q => q.parent_id === question.id)
+    if (children.length === 0) return null
+    return `Part 1 of ${children.length + 1}`
+  } else {
+    // It's a child — find its siblings
+    const siblings = allQuestions.filter(q => q.parent_id === question.parent_id)
+    const childIndex = siblings.findIndex(q => q.id === question.id)
+    const totalParts = siblings.length + 1 // +1 for the parent
+    return `Part ${childIndex + 2} of ${totalParts}`
+  }
+}
+
+/** Returns true if moving from current question to next is within the same group */
+function isNextPartTransition(currentQ: Question, nextQ: Question): boolean {
+  if (!nextQ) return false
+  // current is parent and next is its child
+  if (!currentQ.parent_id && nextQ.parent_id === currentQ.id) return true
+  // current is child and next is sibling (same parent)
+  if (currentQ.parent_id && nextQ.parent_id === currentQ.parent_id) return true
+  return false
+}
+
+/** Returns the display index for the progress counter (top-level position) */
+function getTopLevelIndex(question: Question, allQuestions: Question[]): number {
+  const topLevel = getTopLevel(allQuestions)
+  if (!question.parent_id) {
+    return topLevel.findIndex(q => q.id === question.id)
+  } else {
+    return topLevel.findIndex(q => q.id === question.parent_id)
+  }
+}
+
 export function ParticipantView({ projectId, title, description, questions, hasAllowlist }: ParticipantViewProps) {
+  const orderedQuestions = buildOrderedList(questions)
+  const topLevelQuestions = getTopLevel(questions)
+
   const [currentIndex, setCurrentIndex] = useState(-1)
   const [responses, setResponses] = useState<Map<string, QuestionResponse>>(new Map())
   const [submitted, setSubmitted] = useState(false)
@@ -50,17 +106,29 @@ export function ParticipantView({ projectId, title, description, questions, hasA
   const [notAllowed, setNotAllowed] = useState(false)
   const [notAllowedMessage, setNotAllowedMessage] = useState('')
   const [validating, setValidating] = useState(false)
+  const [slideDown, setSlideDown] = useState(false)
   const sessionId = useState(() => generateUUID())[0]
   const startedAt = useRef<number | null>(null)
 
-  const total = questions.length
+  // currentIndex indexes into orderedQuestions
+  const total = orderedQuestions.length
+  const topLevelTotal = topLevelQuestions.length
   const isWelcome = currentIndex === -1
   const isDone = currentIndex >= total
-  const currentQuestion = questions[currentIndex]
+  const currentQuestion = orderedQuestions[currentIndex]
+  const nextQuestion = orderedQuestions[currentIndex + 1]
   const storageKey = `eg_submitted_${projectId}`
 
+  // Derived group info for current question
+  const partLabel = currentQuestion ? getPartLabel(currentQuestion, questions) : null
+  const isNextPart = currentQuestion && nextQuestion
+    ? isNextPartTransition(currentQuestion, nextQuestion)
+    : false
+  const topLevelIndex = currentQuestion
+    ? getTopLevelIndex(currentQuestion, questions)
+    : 0
+
   useEffect(() => {
-    // Check localStorage for prior submission
     if (typeof window !== 'undefined') {
       if (localStorage.getItem(storageKey)) {
         setAlreadySubmitted(true)
@@ -108,10 +176,7 @@ export function ParticipantView({ projectId, title, description, questions, hasA
 
   function canAdvance(): boolean {
     if (isWelcome) {
-      // Validate email before proceeding
-      if (!participantEmail.trim()) {
-        return false
-      }
+      if (!participantEmail.trim()) return false
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
       return emailRegex.test(participantEmail.trim())
     }
@@ -135,7 +200,6 @@ export function ParticipantView({ projectId, title, description, questions, hasA
       const cdQ = currentQuestion as ContactDetailsQuestion
       const val = resp.value as ContactDetailsResponse
       if (!cdQ.require_at_least_one) return true
-      // At least one field must be filled
       return !!(val?.name?.trim() || val?.email?.trim() || val?.phone?.trim())
     }
 
@@ -174,6 +238,17 @@ export function ParticipantView({ projectId, title, description, questions, hasA
       }
     }
     if (!canAdvance()) return
+
+    // Trigger slide-down animation when moving to a child question
+    const willBeNextPart = nextQuestion && currentQuestion
+      ? isNextPartTransition(currentQuestion, nextQuestion)
+      : false
+
+    if (willBeNextPart) {
+      setSlideDown(true)
+      setTimeout(() => setSlideDown(false), 400)
+    }
+
     setCurrentIndex(prev => prev + 1)
   }
 
@@ -208,7 +283,6 @@ export function ParticipantView({ projectId, title, description, questions, hasA
         throw new Error(data.error || 'Submission failed')
       }
 
-      // Set localStorage flag
       if (typeof window !== 'undefined') {
         localStorage.setItem(storageKey, '1')
       }
@@ -232,10 +306,7 @@ export function ParticipantView({ projectId, title, description, questions, hasA
         <div className="w-12 h-12 bg-ink rounded-full flex items-center justify-center mb-6">
           <Check size={20} className="text-white" />
         </div>
-        <h1
-          className="font-display font-light text-ink mb-3"
-          style={{ fontSize: '28px', letterSpacing: '-0.02em', lineHeight: '1.2' }}
-        >
+        <h1 className="font-display font-light text-ink mb-3" style={{ fontSize: '28px', letterSpacing: '-0.02em', lineHeight: '1.2' }}>
           Already submitted
         </h1>
         <p className="text-sm text-ink-muted max-w-xs leading-relaxed">
@@ -246,24 +317,16 @@ export function ParticipantView({ projectId, title, description, questions, hasA
     )
   }
 
-
   // ── Not allowed ────────────────────────────────────────────────────────────
 
   if (notAllowed) {
     return (
       <div className="fixed inset-0 bg-paper flex flex-col items-center justify-center px-8 text-center participant-root" style={heightStyle}>
-        <div className="w-12 h-12 flex items-center justify-center mb-6 text-2xl">
-          ✕
-        </div>
-        <h1
-          className="font-display font-light text-ink mb-3"
-          style={{ fontSize: '28px', letterSpacing: '-0.02em', lineHeight: '1.2' }}
-        >
+        <div className="w-12 h-12 flex items-center justify-center mb-6 text-2xl">✕</div>
+        <h1 className="font-display font-light text-ink mb-3" style={{ fontSize: '28px', letterSpacing: '-0.02em', lineHeight: '1.2' }}>
           Not eligible
         </h1>
-        <p className="text-sm text-ink-muted max-w-xs leading-relaxed">
-          {notAllowedMessage}
-        </p>
+        <p className="text-sm text-ink-muted max-w-xs leading-relaxed">{notAllowedMessage}</p>
         <p className="text-xs text-ink-faint mt-8">Ethnogrow</p>
       </div>
     )
@@ -277,10 +340,7 @@ export function ParticipantView({ projectId, title, description, questions, hasA
         <div className="w-12 h-12 bg-ink rounded-full flex items-center justify-center mb-6">
           <Check size={20} className="text-white" />
         </div>
-        <h1
-          className="font-display font-light text-ink mb-3"
-          style={{ fontSize: '28px', letterSpacing: '-0.02em', lineHeight: '1.2' }}
-        >
+        <h1 className="font-display font-light text-ink mb-3" style={{ fontSize: '28px', letterSpacing: '-0.02em', lineHeight: '1.2' }}>
           Thank you
         </h1>
         <p className="text-sm text-ink-muted max-w-xs leading-relaxed">
@@ -298,9 +358,7 @@ export function ParticipantView({ projectId, title, description, questions, hasA
       <div className="fixed inset-0 bg-paper flex flex-col participant-root" style={heightStyle}>
         <div className="flex-1 flex flex-col justify-center px-8">
           <div className="w-full max-w-md mx-auto">
-            <p className="text-xs font-medium tracking-widest uppercase text-ink-faint mb-8">
-              Ethnogrow
-            </p>
+            <p className="text-xs font-medium tracking-widest uppercase text-ink-faint mb-8">Ethnogrow</p>
             <h1
               className="font-display font-light text-ink mb-4 leading-tight"
               style={{ fontSize: '32px', letterSpacing: '-0.025em', lineHeight: '1.15' }}
@@ -311,9 +369,9 @@ export function ParticipantView({ projectId, title, description, questions, hasA
               <p className="text-sm text-ink-muted leading-relaxed mb-6 max-w-sm">{description}</p>
             )}
             <div className="flex items-center gap-4 text-xs text-ink-faint mb-10">
-              <span>{total} question{total !== 1 ? 's' : ''}</span>
+              <span>{topLevelTotal} question{topLevelTotal !== 1 ? 's' : ''}</span>
               <span>·</span>
-              <span>~{Math.max(1, Math.round(total * 0.75))} min</span>
+              <span>~{Math.max(1, Math.round(topLevelTotal * 0.75))} min</span>
               <span>·</span>
               <span>Anonymous</span>
             </div>
@@ -321,11 +379,7 @@ export function ParticipantView({ projectId, title, description, questions, hasA
             {/* Email gate */}
             <div
               className="p-5 mb-2"
-              style={{
-                backgroundColor: 'rgba(15,15,15,0.03)',
-                border: '0.5px solid rgba(15,15,15,0.1)',
-                borderRadius: '6px',
-              }}
+              style={{ backgroundColor: 'rgba(15,15,15,0.03)', border: '0.5px solid rgba(15,15,15,0.1)', borderRadius: '6px' }}
             >
               <label className="block text-sm font-medium text-ink mb-1">
                 Your email address
@@ -382,17 +436,16 @@ export function ParticipantView({ projectId, title, description, questions, hasA
           <div className="w-12 h-12 bg-ink rounded-full flex items-center justify-center mb-6">
             <Check size={20} className="text-white" />
           </div>
-          <h2
-            className="font-display font-light text-ink mb-3"
-            style={{ fontSize: '28px', letterSpacing: '-0.02em' }}
-          >
+          <h2 className="font-display font-light text-ink mb-3" style={{ fontSize: '28px', letterSpacing: '-0.02em' }}>
             All done
           </h2>
           <p className="text-sm text-ink-muted mb-6 max-w-xs mx-auto leading-relaxed">
-            You've answered all {total} question{total !== 1 ? 's' : ''}. Ready to submit?
+            You've answered all {topLevelTotal} question{topLevelTotal !== 1 ? 's' : ''}. Ready to submit?
           </p>
           {error && (
-            <p className="text-xs mb-4 max-w-xs px-3 py-2 rounded" style={{ color: '#c93638', backgroundColor: 'rgba(201,54,56,0.06)', border: '0.5px solid rgba(201,54,56,0.2)' }}>{error}</p>
+            <p className="text-xs mb-4 max-w-xs px-3 py-2 rounded" style={{ color: '#c93638', backgroundColor: 'rgba(201,54,56,0.06)', border: '0.5px solid rgba(201,54,56,0.2)' }}>
+              {error}
+            </p>
           )}
           <button onClick={() => setCurrentIndex(total - 1)} className="btn-ghost text-sm">
             Review answers
@@ -421,17 +474,32 @@ export function ParticipantView({ projectId, title, description, questions, hasA
   const ready = canAdvance()
   const showNA = (currentQuestion as any).allow_na === true
   const isTapOnly = currentQuestion.type === 'yes_no' || currentQuestion.type === 'scale'
-  const isScrollable = !isTapOnly
+
+  // Next button label
+  const isLastQuestion = currentIndex === total - 1
+  let nextLabel = 'Next'
+  if (isLastQuestion) nextLabel = 'Review'
+  else if (isNextPart) nextLabel = 'Next part'
 
   return (
-    <div className="fixed inset-0 bg-paper flex flex-col participant-root" style={heightStyle}>
-
-      {/* Counter */}
+    <div
+      className={clsx(
+        'fixed inset-0 bg-paper flex flex-col participant-root',
+        slideDown && 'animate-slide-down'
+      )}
+      style={heightStyle}
+    >
+      {/* Counter + part label */}
       <div className="flex-shrink-0 flex items-center justify-between px-8 pt-6 pb-2">
-        <span className="font-mono text-sm text-ink-muted">
-          {String(currentIndex + 1).padStart(2, '0')}
-          <span className="text-ink-faint">/{String(total).padStart(2, '0')}</span>
-        </span>
+        <div className="flex items-center gap-3">
+          <span className="font-mono text-sm text-ink-muted">
+            {String(topLevelIndex + 1).padStart(2, '0')}
+            <span className="text-ink-faint">/{String(topLevelTotal).padStart(2, '0')}</span>
+          </span>
+          {partLabel && (
+            <span className="text-xs text-ink-faint font-mono">{partLabel}</span>
+          )}
+        </div>
         {!currentQuestion.required && (
           <span className="text-xs text-ink-faint">Optional</span>
         )}
@@ -441,8 +509,10 @@ export function ParticipantView({ projectId, title, description, questions, hasA
         <div className="flex-1 overflow-y-auto px-8 pt-2">
           <div className="max-w-md mx-auto w-full flex flex-col h-full">
             <div className="flex-[2] flex flex-col justify-end pb-8">
-              <h2 className="font-display font-light text-ink leading-snug"
-                style={{ fontSize: '24px', letterSpacing: '-0.02em', lineHeight: '1.3' }}>
+              <h2
+                className="font-display font-light text-ink leading-snug"
+                style={{ fontSize: '24px', letterSpacing: '-0.02em', lineHeight: '1.3' }}
+              >
                 {currentQuestion.text}
               </h2>
             </div>
@@ -474,8 +544,10 @@ export function ParticipantView({ projectId, title, description, questions, hasA
       ) : (
         <div className="flex-1 overflow-y-auto px-8 pt-2">
           <div className="max-w-md mx-auto pb-4">
-            <h2 className="font-display font-light text-ink mb-7 leading-snug"
-              style={{ fontSize: '24px', letterSpacing: '-0.02em', lineHeight: '1.3' }}>
+            <h2
+              className="font-display font-light text-ink mb-7 leading-snug"
+              style={{ fontSize: '24px', letterSpacing: '-0.02em', lineHeight: '1.3' }}
+            >
               {currentQuestion.text}
             </h2>
             <div className={clsx('transition-opacity duration-150', naActive && 'opacity-25 pointer-events-none')}>
@@ -541,7 +613,7 @@ export function ParticipantView({ projectId, title, description, questions, hasA
             )}
             style={{ borderRadius: '6px' }}
           >
-            {currentIndex === total - 1 ? 'Review' : 'Next'}
+            {nextLabel}
             <ArrowRight size={15} />
           </button>
         </div>
@@ -851,4 +923,3 @@ function ContactDetailsInput({ question, value, onChange }: {
     </div>
   )
 }
-
