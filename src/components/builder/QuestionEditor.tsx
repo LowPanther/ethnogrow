@@ -1,10 +1,16 @@
 'use client'
 
 import { useState } from 'react'
-import { Question, MultipleChoiceQuestion, ScaleQuestion, OpenTextQuestion, YesNoQuestion, NumericQuestion, ContactDetailsQuestion } from '@/types'
+import {
+  Question, MultipleChoiceQuestion, ScaleQuestion, OpenTextQuestion,
+  YesNoQuestion, NumericQuestion, ContactDetailsQuestion, InfoBlockQuestion,
+} from '@/types'
 import { getQuestionTypeMeta } from '@/lib/questions'
 import { clsx } from 'clsx'
-import { Trash2, Plus, GripVertical, ChevronDown, ChevronUp, ToggleLeft, ToggleRight, Unlink } from 'lucide-react'
+import {
+  Trash2, Plus, ChevronDown, ChevronUp, ToggleLeft, ToggleRight,
+  Unlink, ArrowUp, ArrowDown,
+} from 'lucide-react'
 
 interface QuestionEditorProps {
   question: Question
@@ -13,19 +19,23 @@ interface QuestionEditorProps {
   onUpdate: (updated: Question) => void
   onDelete: () => void
   onFocus: () => void
-  dragHandleProps?: React.HTMLAttributes<HTMLElement>
-  // Grouping props
+  canMoveUp: boolean
+  canMoveDown: boolean
+  onMoveUp: () => void
+  onMoveDown: () => void
   isChild?: boolean
-  partLabel?: string       // e.g. "Part 1 of 2"
-  onUnlink?: () => void    // only present on child questions
+  partLabel?: string
+  onUnlink?: () => void
 }
 
 export function QuestionEditor({
-  question, index, isActive, onUpdate, onDelete, onFocus, dragHandleProps,
+  question, index, isActive, onUpdate, onDelete, onFocus,
+  canMoveUp, canMoveDown, onMoveUp, onMoveDown,
   isChild, partLabel, onUnlink,
 }: QuestionEditorProps) {
   const meta = getQuestionTypeMeta(question.type)
   const [isExpanded, setIsExpanded] = useState(true)
+  const isInfo = question.type === 'info_block'
 
   function update(patch: Partial<Question>) {
     onUpdate({ ...question, ...patch } as Question)
@@ -64,12 +74,29 @@ export function QuestionEditor({
       )}
 
       <div className="flex items-start gap-3 p-4">
-        <button
-          className="flex-shrink-0 mt-1 text-ink-faint hover:text-ink-muted cursor-grab active:cursor-grabbing transition-colors"
-          {...dragHandleProps}
-        >
-          <GripVertical size={14} />
-        </button>
+        {/* Up/down arrows */}
+        <div className="flex flex-col gap-0.5 flex-shrink-0 mt-0.5">
+          <button
+            onClick={e => { e.stopPropagation(); onMoveUp() }}
+            disabled={!canMoveUp}
+            className={clsx(
+              'p-0.5 rounded transition-colors',
+              canMoveUp ? 'text-ink-faint hover:text-ink' : 'text-ink-faint opacity-20 cursor-not-allowed'
+            )}
+          >
+            <ArrowUp size={12} />
+          </button>
+          <button
+            onClick={e => { e.stopPropagation(); onMoveDown() }}
+            disabled={!canMoveDown}
+            className={clsx(
+              'p-0.5 rounded transition-colors',
+              canMoveDown ? 'text-ink-faint hover:text-ink' : 'text-ink-faint opacity-20 cursor-not-allowed'
+            )}
+          >
+            <ArrowDown size={12} />
+          </button>
+        </div>
 
         <div className="flex-shrink-0 mt-1">
           <span className="text-xs font-mono text-ink-faint">{String(index + 1).padStart(2, '0')}</span>
@@ -80,7 +107,7 @@ export function QuestionEditor({
             type="text"
             value={question.text}
             onChange={e => update({ text: e.target.value })}
-            placeholder="Write your question here…"
+            placeholder={isInfo ? 'Information block body…' : 'Write your question here…'}
             className={clsx(
               'w-full text-sm font-medium text-ink bg-transparent outline-none',
               'placeholder:text-ink-faint leading-snug',
@@ -113,6 +140,9 @@ export function QuestionEditor({
 
       {isExpanded && (
         <div className="border-t border-paper-border px-4 pb-4 pt-3 space-y-3 animate-slide-down">
+          {question.type === 'info_block' && (
+            <InfoBlockSettings question={question as InfoBlockQuestion} onUpdate={onUpdate} />
+          )}
           {question.type === 'multiple_choice' && (
             <MultipleChoiceSettings question={question as MultipleChoiceQuestion} onUpdate={onUpdate} />
           )}
@@ -132,44 +162,79 @@ export function QuestionEditor({
             <ContactDetailsSettings question={question as ContactDetailsQuestion} onUpdate={onUpdate} />
           )}
 
-          <div className="flex items-center justify-between pt-2 border-t border-paper-border">
-            <span className="text-xs text-ink-muted">Required</span>
-            <button
-              onClick={e => { e.stopPropagation(); update({ required: !question.required }) }}
-              className={clsx(
-                'flex items-center gap-1.5 text-xs font-medium transition-colors',
-                question.required ? 'text-ink' : 'text-ink-faint'
-              )}
-            >
-              {question.required
-                ? <ToggleRight size={16} className="text-teal" />
-                : <ToggleLeft size={16} />
-              }
-              {question.required ? 'Yes' : 'No'}
-            </button>
-          </div>
+          {!isInfo && (
+            <>
+              <div className="flex items-center justify-between pt-2 border-t border-paper-border">
+                <span className="text-xs text-ink-muted">Required</span>
+                <button
+                  onClick={e => { e.stopPropagation(); update({ required: !question.required }) }}
+                  className={clsx(
+                    'flex items-center gap-1.5 text-xs font-medium transition-colors',
+                    question.required ? 'text-ink' : 'text-ink-faint'
+                  )}
+                >
+                  {question.required
+                    ? <ToggleRight size={16} className="text-teal" />
+                    : <ToggleLeft size={16} />
+                  }
+                  {question.required ? 'Yes' : 'No'}
+                </button>
+              </div>
 
-          <div className="flex items-center justify-between pt-2 border-t border-paper-border">
-            <div>
-              <span className="text-xs text-ink-muted">Allow "Not applicable"</span>
-              <p className="text-xs text-ink-faint mt-0.5">Participants can skip with an N/A reason</p>
-            </div>
-            <button
-              onClick={e => { e.stopPropagation(); update({ allow_na: !question.allow_na }) }}
-              className={clsx(
-                'flex items-center gap-1.5 text-xs font-medium transition-colors flex-shrink-0 ml-4',
-                question.allow_na ? 'text-ink' : 'text-ink-faint'
-              )}
-            >
-              {question.allow_na
-                ? <ToggleRight size={16} className="text-teal" />
-                : <ToggleLeft size={16} />
-              }
-              {question.allow_na ? 'On' : 'Off'}
-            </button>
-          </div>
+              <div className="flex items-center justify-between pt-2 border-t border-paper-border">
+                <div>
+                  <span className="text-xs text-ink-muted">Allow "Not applicable"</span>
+                  <p className="text-xs text-ink-faint mt-0.5">Participants can skip with an N/A reason</p>
+                </div>
+                <button
+                  onClick={e => { e.stopPropagation(); update({ allow_na: !question.allow_na }) }}
+                  className={clsx(
+                    'flex items-center gap-1.5 text-xs font-medium transition-colors flex-shrink-0 ml-4',
+                    question.allow_na ? 'text-ink' : 'text-ink-faint'
+                  )}
+                >
+                  {question.allow_na
+                    ? <ToggleRight size={16} className="text-teal" />
+                    : <ToggleLeft size={16} />
+                  }
+                  {question.allow_na ? 'On' : 'Off'}
+                </button>
+              </div>
+            </>
+          )}
         </div>
       )}
+    </div>
+  )
+}
+
+// ─── Info Block ───────────────────────────────────────────────────────────────
+
+function InfoBlockSettings({ question, onUpdate }: { question: InfoBlockQuestion; onUpdate: (q: InfoBlockQuestion) => void }) {
+  return (
+    <div className="space-y-3">
+      <div>
+        <label className="label">Heading (optional)</label>
+        <input
+          type="text"
+          value={question.heading || ''}
+          onChange={e => onUpdate({ ...question, heading: e.target.value })}
+          className="input py-1.5 text-sm"
+          placeholder="e.g. About this tool"
+          onClick={e => e.stopPropagation()}
+        />
+      </div>
+      <div>
+        <label className="label">Body</label>
+        <textarea
+          value={question.text}
+          onChange={e => onUpdate({ ...question, text: e.target.value })}
+          rows={4}
+          className="textarea text-sm leading-relaxed"
+          placeholder="Write the information you want participants to read…"
+          onClick={e => e.stopPropagation()}
+        />
+      </div>
     </div>
   )
 }
@@ -498,6 +563,8 @@ function NumericSettings({ question, onUpdate }: { question: NumericQuestion; on
   )
 }
 
+// ─── Contact Details ──────────────────────────────────────────────────────────
+
 function ContactDetailsSettings({
   question, onUpdate,
 }: {
@@ -524,7 +591,6 @@ function ContactDetailsSettings({
 
       <div className="space-y-3">
         <p className="text-xs font-medium text-ink-muted uppercase tracking-widest">Collect</p>
-
         {([
           { field: 'collect_name', requiredField: 'name_required', label: 'Full name' },
           { field: 'collect_email', requiredField: 'email_required', label: 'Email address' },
@@ -552,7 +618,6 @@ function ContactDetailsSettings({
                 {question[field] ? 'On' : 'Off'}
               </button>
             </div>
-
             {question[field] && (
               <div className="flex items-center justify-between pl-3 border-l-2 border-paper-border">
                 <span className="text-xs text-ink-muted">Required</span>

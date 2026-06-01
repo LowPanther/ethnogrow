@@ -7,6 +7,7 @@ export type QuestionType =
   | 'yes_no'
   | 'numeric'
   | 'contact_details'
+  | 'info_block'
 
 export interface BaseQuestion {
   id: string
@@ -65,6 +66,13 @@ export interface ContactDetailsQuestion extends BaseQuestion {
   require_at_least_one: boolean
 }
 
+export interface InfoBlockQuestion extends BaseQuestion {
+  type: 'info_block'
+  // text field (inherited from BaseQuestion) holds the body content
+  // title is optional — stored in text, heading is optional below
+  heading?: string
+}
+
 export type Question =
   | MultipleChoiceQuestion
   | ScaleQuestion
@@ -72,6 +80,7 @@ export type Question =
   | YesNoQuestion
   | NumericQuestion
   | ContactDetailsQuestion
+  | InfoBlockQuestion
 
 // ─── Project / Questionnaire ──────────────────────────────────────────────────
 

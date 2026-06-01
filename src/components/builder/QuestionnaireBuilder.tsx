@@ -1,53 +1,16 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { Question, QuestionType, Project } from '@/types'
+import { Question, QuestionType, Project, InfoBlockQuestion } from '@/types'
 import { createQuestion, validateProject, QUESTION_TYPES, getQuestionTypeMeta } from '@/lib/questions'
 import { QuestionEditor } from './QuestionEditor'
 import { QuestionTypeSelector } from './QuestionTypeSelector'
 import { createClient } from '@/lib/supabase-browser'
 import { clsx } from 'clsx'
-import {
-  DndContext,
-  DragEndEvent,
-  DragOverEvent,
-  DragStartEvent,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  closestCenter,
-  DragOverlay,
-} from '@dnd-kit/core'
-import {
-  SortableContext,
-  arrayMove,
-  useSortable,
-  verticalListSortingStrategy,
-} from '@dnd-kit/sortable'
-import { CSS } from '@dnd-kit/utilities'
-import { Plus, Sparkles, Save, Share2, Eye, ChevronDown, CheckCircle2, AlertCircle } from 'lucide-react'
+import { Plus, Sparkles, Save, Share2, Eye, ChevronDown, CheckCircle2, AlertCircle, Link } from 'lucide-react'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function generateUUID(): string {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
-    const r = Math.random() * 16 | 0
-    const v = c === 'x' ? r : (r & 0x3 | 0x8)
-    return v.toString(16)
-  })
-}
-
-/** Returns children of a given parent id, in array order */
-function getChildren(questions: Question[], parentId: string): Question[] {
-  return questions.filter(q => q.parent_id === parentId)
-}
-
-/** Returns top-level questions only */
-function getTopLevel(questions: Question[]): Question[] {
-  return questions.filter(q => !q.parent_id)
-}
-
-/** Re-orders the flat array so each parent is immediately followed by its children */
 function buildOrderedList(questions: Question[]): Question[] {
   const result: Question[] = []
   for (const q of questions.filter(q => !q.parent_id)) {
@@ -57,53 +20,15 @@ function buildOrderedList(questions: Question[]): Question[] {
   return result
 }
 
-// ─── Sortable wrappers ────────────────────────────────────────────────────────
-
-function SortableQuestion({
-  question, index, isActive, onUpdate, onDelete, onFocus,
-  isChild, partLabel, onUnlink,
-  isDropTarget,
-}: {
-  question: Question
-  index: number
-  isActive: boolean
-  onUpdate: (q: Question) => void
-  onDelete: () => void
-  onFocus: () => void
-  isChild?: boolean
-  partLabel?: string
-  onUnlink?: () => void
-  isDropTarget?: boolean
-}) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-    useSortable({ id: question.id, disabled: !!question.parent_id && isChild })
-
-  return (
-    <div
-      ref={setNodeRef}
-      style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 }}
-      className={clsx(
-        'transition-all duration-150',
-        isDropTarget && 'ring-2 ring-teal ring-offset-1 rounded'
-      )}
-    >
-      <QuestionEditor
-        question={question}
-        index={index}
-        isActive={isActive}
-        onUpdate={onUpdate}
-        onDelete={onDelete}
-        onFocus={onFocus}
-        dragHandleProps={!isChild ? { ...attributes, ...listeners } : undefined}
-        isChild={isChild}
-        partLabel={partLabel}
-        onUnlink={onUnlink}
-      />
-    </div>
-  )
+function getTopLevel(questions: Question[]): Question[] {
+  return questions.filter(q => !q.parent_id)
 }
 
-// ─── Props / types ────────────────────────────────────────────────────────────
+function getChildren(questions: Question[], parentId: string): Question[] {
+  return questions.filter(q => q.parent_id === parentId)
+}
+
+// ─── Props ────────────────────────────────────────────────────────────────────
 
 interface QuestionnaireBuilderProps {
   initialProject?: Partial<Project>
@@ -130,11 +55,11 @@ export function QuestionnaireBuilder({
   const [showTypeMenu, setShowTypeMenu] = useState(false)
   const [saveState, setSaveState] = useState<SaveState>('idle')
   const [saveError, setSaveError] = useState<string | null>(null)
-  const [draggingId, setDraggingId] = useState<string | null>(null)
-  const [dropTargetId, setDropTargetId] = useState<string | null>(null)
 
-  // Per-parent "add follow-up" type menu visibility
+  // Per-parent follow-up panel state: null = closed, parentId = open
   const [followUpMenuFor, setFollowUpMenuFor] = useState<string | null>(null)
+  // 'new' = type selector, 'existing' = link existing question
+  const [followUpMode, setFollowUpMode] = useState<'new' | 'existing'>('new')
 
   const addQuestionRef = useRef<HTMLDivElement>(null)
 
@@ -149,11 +74,7 @@ export function QuestionnaireBuilder({
     }
   }, [pendingQuestion])
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
-  )
-
-  // ── Question CRUD ────────────────────────────────────────────────────────────
+  // ── Question CRUD ─────────────────────────────────────────────────────────
 
   function addQuestion(type: QuestionType) {
     const newQ: Question = { ...createQuestion(type, questions.length), parent_id: null }
@@ -163,23 +84,26 @@ export function QuestionnaireBuilder({
   }
 
   function addFollowUp(parentId: string, type: QuestionType) {
-    const newQ: Question = {
-      ...createQuestion(type, questions.length),
-      parent_id: parentId,
-    }
+    const newQ: Question = { ...createQuestion(type, questions.length), parent_id: parentId }
     setQuestions(prev => {
-      // Insert immediately after the last child of this parent (or after the parent itself)
       const ordered = buildOrderedList(prev)
-      const lastChildIndex = (() => {
-        let idx = ordered.findIndex(q => q.id === parentId)
-        while (idx + 1 < ordered.length && ordered[idx + 1].parent_id === parentId) idx++
-        return idx
-      })()
+      let insertAfter = ordered.findIndex(q => q.id === parentId)
+      while (insertAfter + 1 < ordered.length && ordered[insertAfter + 1].parent_id === parentId) {
+        insertAfter++
+      }
       const result = [...ordered]
-      result.splice(lastChildIndex + 1, 0, newQ)
+      result.splice(insertAfter + 1, 0, newQ)
       return result.map((q, i) => ({ ...q, order: i }))
     })
     setActiveQuestionId(newQ.id)
+    setFollowUpMenuFor(null)
+  }
+
+  function linkExisting(parentId: string, childId: string) {
+    setQuestions(prev => {
+      const linked = prev.map(q => q.id === childId ? { ...q, parent_id: parentId } : q)
+      return buildOrderedList(linked).map((q, i) => ({ ...q, order: i }))
+    })
     setFollowUpMenuFor(null)
   }
 
@@ -189,84 +113,67 @@ export function QuestionnaireBuilder({
 
   function deleteQuestion(id: string) {
     setQuestions(prev => {
-      // If parent: promote children to top-level
       const promoted = prev.map(q => q.parent_id === id ? { ...q, parent_id: null } : q)
-      return promoted.filter(q => q.id !== id).map((q, i) => ({ ...q, order: i }))
+      return buildOrderedList(promoted.filter(q => q.id !== id)).map((q, i) => ({ ...q, order: i }))
     })
     if (activeQuestionId === id) setActiveQuestionId(null)
   }
 
   function unlinkQuestion(id: string) {
     setQuestions(prev =>
-      buildOrderedList(
-        prev.map(q => q.id === id ? { ...q, parent_id: null } : q)
-      ).map((q, i) => ({ ...q, order: i }))
+      buildOrderedList(prev.map(q => q.id === id ? { ...q, parent_id: null } : q))
+        .map((q, i) => ({ ...q, order: i }))
     )
   }
 
-  // ── Drag and drop ────────────────────────────────────────────────────────────
+  // ── Ordering ──────────────────────────────────────────────────────────────
 
-  function handleDragStart(event: DragStartEvent) {
-    setDraggingId(String(event.active.id))
+  function moveTopLevel(id: string, direction: 'up' | 'down') {
+    setQuestions(prev => {
+      const topLevel = getTopLevel(prev)
+      const idx = topLevel.findIndex(q => q.id === id)
+      const swapIdx = direction === 'up' ? idx - 1 : idx + 1
+      if (swapIdx < 0 || swapIdx >= topLevel.length) return prev
+
+      // Swap the two groups
+      const newTopLevel = [...topLevel]
+      ;[newTopLevel[idx], newTopLevel[swapIdx]] = [newTopLevel[swapIdx], newTopLevel[idx]]
+
+      // Rebuild with children following their parents
+      const rebuilt: Question[] = []
+      for (const parent of newTopLevel) {
+        rebuilt.push(parent)
+        rebuilt.push(...prev.filter(q => q.parent_id === parent.id))
+      }
+      return rebuilt.map((q, i) => ({ ...q, order: i }))
+    })
   }
 
-  function handleDragOver(event: DragOverEvent) {
-    const { active, over } = event
-    if (!over || active.id === over.id) { setDropTargetId(null); return }
+  function moveChild(id: string, parentId: string, direction: 'up' | 'down') {
+    setQuestions(prev => {
+      const siblings = prev.filter(q => q.parent_id === parentId)
+      const idx = siblings.findIndex(q => q.id === id)
+      const swapIdx = direction === 'up' ? idx - 1 : idx + 1
+      if (swapIdx < 0 || swapIdx >= siblings.length) return prev
 
-    const draggedQ = questions.find(q => q.id === active.id)
-    const overQ = questions.find(q => q.id === over.id)
-    if (!draggedQ || !overQ) { setDropTargetId(null); return }
+      const newSiblings = [...siblings]
+      ;[newSiblings[idx], newSiblings[swapIdx]] = [newSiblings[swapIdx], newSiblings[idx]]
 
-    // Can only link top-level onto top-level
-    const canLink = !draggedQ.parent_id && !overQ.parent_id && draggedQ.id !== overQ.id
-    setDropTargetId(canLink ? String(over.id) : null)
+      // Rebuild full list preserving everything else
+      const result: Question[] = []
+      for (const parent of getTopLevel(prev)) {
+        result.push(parent)
+        if (parent.id === parentId) {
+          result.push(...newSiblings)
+        } else {
+          result.push(...prev.filter(q => q.parent_id === parent.id))
+        }
+      }
+      return result.map((q, i) => ({ ...q, order: i }))
+    })
   }
 
-  function handleDragEnd(event: DragEndEvent) {
-    const { active, over } = event
-    setDraggingId(null)
-    setDropTargetId(null)
-
-    if (!over || active.id === over.id) return
-
-    const draggedQ = questions.find(q => q.id === active.id)
-    const overQ = questions.find(q => q.id === over.id)
-    if (!draggedQ || !overQ) return
-
-    // Drop top-level onto top-level → link as child
-    if (!draggedQ.parent_id && !overQ.parent_id) {
-      setQuestions(prev => {
-        const linked = prev.map(q => q.id === draggedQ.id ? { ...q, parent_id: overQ.id } : q)
-        return buildOrderedList(linked).map((q, i) => ({ ...q, order: i }))
-      })
-      return
-    }
-
-    // Drop child onto top-level position that isn't its own parent → unlink and reorder
-    if (draggedQ.parent_id && !overQ.parent_id && overQ.id !== draggedQ.parent_id) {
-      setQuestions(prev => {
-        const unlinked = prev.map(q => q.id === draggedQ.id ? { ...q, parent_id: null } : q)
-        const ordered = buildOrderedList(unlinked)
-        const oldIndex = ordered.findIndex(q => q.id === draggedQ.id)
-        const newIndex = ordered.findIndex(q => q.id === overQ.id)
-        return arrayMove(ordered, oldIndex, newIndex).map((q, i) => ({ ...q, order: i }))
-      })
-      return
-    }
-
-    // Standard reorder among top-level
-    if (!draggedQ.parent_id && !overQ.parent_id) {
-      setQuestions(prev => {
-        const ordered = buildOrderedList(prev)
-        const oldIndex = ordered.findIndex(q => q.id === active.id)
-        const newIndex = ordered.findIndex(q => q.id === over.id)
-        return arrayMove(ordered, oldIndex, newIndex).map((q, i) => ({ ...q, order: i }))
-      })
-    }
-  }
-
-  // ── Save ─────────────────────────────────────────────────────────────────────
+  // ── Save ──────────────────────────────────────────────────────────────────
 
   async function handleSave(status: 'draft' | 'active' = 'draft') {
     const errors = validateProject(title, questions)
@@ -309,14 +216,18 @@ export function QuestionnaireBuilder({
     }
   }
 
-  // ── Derived state ─────────────────────────────────────────────────────────────
+  // ── Derived state ─────────────────────────────────────────────────────────
 
-  const orderedQuestions = buildOrderedList(questions)
   const topLevelQuestions = getTopLevel(questions)
   const childCount = questions.filter(q => !!q.parent_id).length
   const questionCount = topLevelQuestions.length
   const totalCount = questions.length
-  const isValid = title.trim().length > 0 && questionCount > 0
+  const isValid = title.trim().length > 0 && questions.filter(q => q.type !== 'info_block').length > 0
+
+  // Unlinked top-level questions available to link as children (excludes info_blocks as parents)
+  function getAvailableToLink(parentId: string): Question[] {
+    return topLevelQuestions.filter(q => q.id !== parentId && q.type !== 'info_block')
+  }
 
   const typeCounts = QUESTION_TYPES.map(({ type, label, icon }) => ({
     type, label, icon,
@@ -330,7 +241,7 @@ export function QuestionnaireBuilder({
     }, 50)
   }
 
-  // ── Render ────────────────────────────────────────────────────────────────────
+  // ── Render ────────────────────────────────────────────────────────────────
 
   return (
     <div className="min-h-screen bg-paper">
@@ -415,109 +326,151 @@ export function QuestionnaireBuilder({
             )}
 
             {questionCount > 0 ? (
-              <DndContext
-                sensors={sensors}
-                collisionDetection={closestCenter}
-                onDragStart={handleDragStart}
-                onDragOver={handleDragOver}
-                onDragEnd={handleDragEnd}
-              >
-                <SortableContext
-                  items={orderedQuestions.map(q => q.id)}
-                  strategy={verticalListSortingStrategy}
-                >
-                  <div className="space-y-2">
-                    {topLevelQuestions.map((parent, parentIdx) => {
-                      const children = getChildren(questions, parent.id)
-                      const hasChildren = children.length > 0
-                      const totalParts = hasChildren ? children.length + 1 : 0
+              <div className="space-y-2">
+                {topLevelQuestions.map((parent, parentIdx) => {
+                  const children = getChildren(questions, parent.id)
+                  const hasChildren = children.length > 0
+                  const totalParts = hasChildren ? children.length + 1 : 0
+                  const canParentMoveUp = parentIdx > 0
+                  const canParentMoveDown = parentIdx < topLevelQuestions.length - 1
+                  const isInfoBlock = parent.type === 'info_block'
 
-                      return (
-                        <div key={parent.id} className="space-y-0">
-                          {/* Parent question */}
-                          <SortableQuestion
-                            question={parent}
-                            index={orderedQuestions.findIndex(q => q.id === parent.id)}
-                            isActive={activeQuestionId === parent.id}
-                            onUpdate={updated => updateQuestion(parent.id, updated)}
-                            onDelete={() => deleteQuestion(parent.id)}
-                            onFocus={() => setActiveQuestionId(parent.id)}
-                            isDropTarget={dropTargetId === parent.id}
-                            partLabel={hasChildren ? 'Part 1 of ' + totalParts : undefined}
+                  return (
+                    <div key={parent.id}>
+                      {/* Parent */}
+                      <QuestionEditor
+                        question={parent}
+                        index={questions.findIndex(q => q.id === parent.id)}
+                        isActive={activeQuestionId === parent.id}
+                        onUpdate={updated => updateQuestion(parent.id, updated)}
+                        onDelete={() => deleteQuestion(parent.id)}
+                        onFocus={() => setActiveQuestionId(parent.id)}
+                        canMoveUp={canParentMoveUp}
+                        canMoveDown={canParentMoveDown}
+                        onMoveUp={() => moveTopLevel(parent.id, 'up')}
+                        onMoveDown={() => moveTopLevel(parent.id, 'down')}
+                        partLabel={hasChildren ? 'Part 1 of ' + totalParts : undefined}
+                      />
+
+                      {/* Children */}
+                      {children.map((child, childIdx) => (
+                        <div key={child.id} className="ml-6 mt-1.5 relative">
+                          <div
+                            className="absolute w-px"
+                            style={{
+                              left: '-12px',
+                              top: childIdx === 0 ? '12px' : '0',
+                              bottom: 0,
+                              backgroundColor: 'rgba(15,15,15,0.12)',
+                            }}
                           />
+                          <QuestionEditor
+                            question={child}
+                            index={questions.findIndex(q => q.id === child.id)}
+                            isActive={activeQuestionId === child.id}
+                            onUpdate={updated => updateQuestion(child.id, updated)}
+                            onDelete={() => deleteQuestion(child.id)}
+                            onFocus={() => setActiveQuestionId(child.id)}
+                            canMoveUp={childIdx > 0}
+                            canMoveDown={childIdx < children.length - 1}
+                            onMoveUp={() => moveChild(child.id, parent.id, 'up')}
+                            onMoveDown={() => moveChild(child.id, parent.id, 'down')}
+                            isChild
+                            partLabel={`Part ${childIdx + 2} of ${totalParts}`}
+                            onUnlink={() => unlinkQuestion(child.id)}
+                          />
+                        </div>
+                      ))}
 
-                          {/* Children */}
-                          {children.map((child, childIdx) => (
-                            <div key={child.id} className="ml-6 mt-1.5 relative">
-                              {/* Connector line */}
-                              <div
-                                className="absolute left-0 top-0 bottom-0 w-px"
-                                style={{
-                                  left: '-12px',
-                                  backgroundColor: 'rgba(15,15,15,0.12)',
-                                  top: childIdx === 0 ? '12px' : '0',
-                                }}
-                              />
-                              <SortableQuestion
-                                question={child}
-                                index={orderedQuestions.findIndex(q => q.id === child.id)}
-                                isActive={activeQuestionId === child.id}
-                                onUpdate={updated => updateQuestion(child.id, updated)}
-                                onDelete={() => deleteQuestion(child.id)}
-                                onFocus={() => setActiveQuestionId(child.id)}
-                                isChild
-                                partLabel={`Part ${childIdx + 2} of ${totalParts}`}
-                                onUnlink={() => unlinkQuestion(child.id)}
-                              />
-                            </div>
-                          ))}
-
-                          {/* Add follow-up button */}
-                          {!parent.parent_id && (
-                            <div className={clsx('ml-6 mt-1.5', hasChildren && 'relative')}>
-                              {hasChildren && (
-                                <div
-                                  className="absolute left-0 w-px"
-                                  style={{ left: '-12px', top: 0, height: '20px', backgroundColor: 'rgba(15,15,15,0.12)' }}
-                                />
-                              )}
-                              {followUpMenuFor === parent.id ? (
-                                <div
-                                  className="p-3 animate-slide-down"
-                                  style={{
-                                    backgroundColor: 'white',
-                                    border: '0.5px solid rgba(15,15,15,0.12)',
-                                    borderRadius: '4px',
-                                  }}
-                                >
-                                  <div className="flex items-center justify-between mb-2">
-                                    <p className="text-xs text-ink-faint font-medium uppercase tracking-widest">Add follow-up question</p>
-                                    <button
-                                      onClick={() => setFollowUpMenuFor(null)}
-                                      className="text-xs text-ink-faint hover:text-ink transition-colors"
-                                    >
-                                      Cancel
-                                    </button>
-                                  </div>
-                                  <QuestionTypeSelector onSelect={type => addFollowUp(parent.id, type)} />
-                                </div>
-                              ) : (
+                      {/* Add follow-up — not available on info_block parents */}
+                      {!isInfoBlock && (
+                        <div className={clsx('ml-6 mt-1.5', hasChildren && 'relative')}>
+                          {hasChildren && (
+                            <div
+                              className="absolute w-px"
+                              style={{ left: '-12px', top: 0, height: '20px', backgroundColor: 'rgba(15,15,15,0.12)' }}
+                            />
+                          )}
+                          {followUpMenuFor === parent.id ? (
+                            <div
+                              className="p-3 animate-slide-down"
+                              style={{ backgroundColor: 'white', border: '0.5px solid rgba(15,15,15,0.12)', borderRadius: '4px' }}
+                            >
+                              {/* Mode tabs */}
+                              <div className="flex items-center gap-3 mb-3">
                                 <button
-                                  onClick={() => setFollowUpMenuFor(parent.id)}
-                                  className="flex items-center gap-1.5 text-xs text-ink-faint hover:text-ink transition-colors py-1"
+                                  onClick={() => setFollowUpMode('new')}
+                                  className={clsx(
+                                    'text-xs font-medium transition-colors pb-1 border-b',
+                                    followUpMode === 'new'
+                                      ? 'text-ink border-ink'
+                                      : 'text-ink-faint border-transparent hover:text-ink'
+                                  )}
                                 >
-                                  <Plus size={11} />
-                                  Add follow-up
+                                  Create new
                                 </button>
+                                <button
+                                  onClick={() => setFollowUpMode('existing')}
+                                  className={clsx(
+                                    'text-xs font-medium transition-colors pb-1 border-b',
+                                    followUpMode === 'existing'
+                                      ? 'text-ink border-ink'
+                                      : 'text-ink-faint border-transparent hover:text-ink'
+                                  )}
+                                >
+                                  Link existing
+                                </button>
+                                <button
+                                  onClick={() => setFollowUpMenuFor(null)}
+                                  className="ml-auto text-xs text-ink-faint hover:text-ink transition-colors"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+
+                              {followUpMode === 'new' ? (
+                                <QuestionTypeSelector onSelect={type => addFollowUp(parent.id, type)} />
+                              ) : (
+                                <div className="space-y-1">
+                                  {getAvailableToLink(parent.id).length === 0 ? (
+                                    <p className="text-xs text-ink-faint py-2">No unlinked questions available. Create a new one instead.</p>
+                                  ) : (
+                                    getAvailableToLink(parent.id).map(q => {
+                                      const meta = getQuestionTypeMeta(q.type)
+                                      return (
+                                        <button
+                                          key={q.id}
+                                          onClick={() => linkExisting(parent.id, q.id)}
+                                          className="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-paper-warm transition-colors rounded"
+                                          style={{ borderRadius: '4px' }}
+                                        >
+                                          <span className={clsx('text-xs flex-shrink-0', meta.color)}>{meta.icon}</span>
+                                          <span className="text-sm text-ink truncate flex-1">
+                                            {q.text || <span className="text-ink-faint italic">Untitled question</span>}
+                                          </span>
+                                          <Link size={11} className="text-ink-faint flex-shrink-0" />
+                                        </button>
+                                      )
+                                    })
+                                  )}
+                                </div>
                               )}
                             </div>
+                          ) : (
+                            <button
+                              onClick={() => { setFollowUpMenuFor(parent.id); setFollowUpMode('new') }}
+                              className="flex items-center gap-1.5 text-xs text-ink-faint hover:text-ink transition-colors py-1"
+                            >
+                              <Plus size={11} />
+                              Add follow-up
+                            </button>
                           )}
                         </div>
-                      )
-                    })}
-                  </div>
-                </SortableContext>
-              </DndContext>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
             ) : (
               <EmptyState onAddQuestion={addQuestion} />
             )}
@@ -616,7 +569,7 @@ function EmptyState({ onAddQuestion }: { onAddQuestion: (type: QuestionType) => 
         Start building
       </h3>
       <p className="text-sm text-ink-muted mb-8 max-w-xs leading-relaxed">
-        Add your first question. You can drag to reorder, and each type has its own settings.
+        Add your first question. You can reorder with the arrows, and each type has its own settings.
       </p>
       <div className="w-full max-w-sm">
         <p className="text-xs text-ink-faint font-medium uppercase tracking-widest mb-3">Choose a question type</p>
@@ -637,7 +590,7 @@ function Stat({ label, value }: { label: string; value: number | string }) {
 
 function getTip(questionCount: number, childCount: number): string {
   if (questionCount === 0) return 'A well-scoped questionnaire asks 5–12 focused questions. Start with context-setting, then go deeper.'
-  if (childCount === 0 && questionCount >= 2) return 'Use follow-up questions to dig deeper — click "Add follow-up" under any question, or drag one question onto another to link them.'
+  if (childCount === 0 && questionCount >= 2) return 'Use follow-up questions to dig deeper — click "Add follow-up" under any question to link a second part.'
   if (childCount > 0) return 'Follow-up questions appear as parts of the same group. Participants tap "Next part" to move between them without losing context.'
   if (questionCount < 5) return 'Mix question types to keep participants engaged. Open text reveals nuance that scales and checkboxes miss.'
   if (questionCount < 10) return "You're building well. Consider whether each question earns its place — every question adds friction for participants."

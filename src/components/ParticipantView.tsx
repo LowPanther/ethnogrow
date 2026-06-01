@@ -6,6 +6,7 @@ import {
   MultipleChoiceQuestion, ScaleQuestion, OpenTextQuestion,
   YesNoQuestion, NumericQuestion, NumericResponse,
   ContactDetailsQuestion, ContactDetailsResponse,
+  InfoBlockQuestion,
 } from '@/types'
 import { clsx } from 'clsx'
 import { ArrowRight, ArrowLeft, Check } from 'lucide-react'
@@ -39,7 +40,6 @@ async function hashEmail(email: string): Promise<string> {
 
 // ─── Group helpers ────────────────────────────────────────────────────────────
 
-/** Returns the flat ordered list with parents followed by their children */
 function buildOrderedList(questions: Question[]): Question[] {
   const result: Question[] = []
   for (const q of questions.filter(q => !q.parent_id)) {
@@ -49,38 +49,31 @@ function buildOrderedList(questions: Question[]): Question[] {
   return result
 }
 
-/** Top-level questions only (for progress counter) */
 function getTopLevel(questions: Question[]): Question[] {
-  return questions.filter(q => !q.parent_id)
+  // info_blocks do not count toward progress total
+  return questions.filter(q => !q.parent_id && q.type !== 'info_block')
 }
 
-/** Given a question, return its part label if it belongs to a group, else null */
 function getPartLabel(question: Question, allQuestions: Question[]): string | null {
+  if (question.type === 'info_block') return null
   if (!question.parent_id) {
-    // It's a parent — check if it has children
     const children = allQuestions.filter(q => q.parent_id === question.id)
     if (children.length === 0) return null
     return `Part 1 of ${children.length + 1}`
   } else {
-    // It's a child — find its siblings
     const siblings = allQuestions.filter(q => q.parent_id === question.parent_id)
     const childIndex = siblings.findIndex(q => q.id === question.id)
-    const totalParts = siblings.length + 1 // +1 for the parent
-    return `Part ${childIndex + 2} of ${totalParts}`
+    return `Part ${childIndex + 2} of ${siblings.length + 1}`
   }
 }
 
-/** Returns true if moving from current question to next is within the same group */
 function isNextPartTransition(currentQ: Question, nextQ: Question): boolean {
   if (!nextQ) return false
-  // current is parent and next is its child
   if (!currentQ.parent_id && nextQ.parent_id === currentQ.id) return true
-  // current is child and next is sibling (same parent)
   if (currentQ.parent_id && nextQ.parent_id === currentQ.parent_id) return true
   return false
 }
 
-/** Returns the display index for the progress counter (top-level position) */
 function getTopLevelIndex(question: Question, allQuestions: Question[]): number {
   const topLevel = getTopLevel(allQuestions)
   if (!question.parent_id) {
@@ -110,7 +103,6 @@ export function ParticipantView({ projectId, title, description, questions, hasA
   const sessionId = useState(() => generateUUID())[0]
   const startedAt = useRef<number | null>(null)
 
-  // currentIndex indexes into orderedQuestions
   const total = orderedQuestions.length
   const topLevelTotal = topLevelQuestions.length
   const isWelcome = currentIndex === -1
@@ -119,7 +111,7 @@ export function ParticipantView({ projectId, title, description, questions, hasA
   const nextQuestion = orderedQuestions[currentIndex + 1]
   const storageKey = `eg_submitted_${projectId}`
 
-  // Derived group info for current question
+  const isInfoBlock = currentQuestion?.type === 'info_block'
   const partLabel = currentQuestion ? getPartLabel(currentQuestion, questions) : null
   const isNextPart = currentQuestion && nextQuestion
     ? isNextPartTransition(currentQuestion, nextQuestion)
@@ -130,9 +122,7 @@ export function ParticipantView({ projectId, title, description, questions, hasA
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      if (localStorage.getItem(storageKey)) {
-        setAlreadySubmitted(true)
-      }
+      if (localStorage.getItem(storageKey)) setAlreadySubmitted(true)
     }
   }, [storageKey])
 
@@ -181,6 +171,8 @@ export function ParticipantView({ projectId, title, description, questions, hasA
       return emailRegex.test(participantEmail.trim())
     }
     if (!currentQuestion) return false
+    // Info blocks always allow advance
+    if (isInfoBlock) return true
     if (!currentQuestion.required) return true
     const resp = responses.get(currentQuestion.id)
     if (!resp) return false
@@ -239,11 +231,9 @@ export function ParticipantView({ projectId, title, description, questions, hasA
     }
     if (!canAdvance()) return
 
-    // Trigger slide-down animation when moving to a child question
     const willBeNextPart = nextQuestion && currentQuestion
       ? isNextPartTransition(currentQuestion, nextQuestion)
       : false
-
     if (willBeNextPart) {
       setSlideDown(true)
       setTimeout(() => setSlideDown(false), 400)
@@ -359,10 +349,7 @@ export function ParticipantView({ projectId, title, description, questions, hasA
         <div className="flex-1 flex flex-col justify-center px-8">
           <div className="w-full max-w-md mx-auto">
             <p className="text-xs font-medium tracking-widest uppercase text-ink-faint mb-8">Ethnogrow</p>
-            <h1
-              className="font-display font-light text-ink mb-4 leading-tight"
-              style={{ fontSize: '32px', letterSpacing: '-0.025em', lineHeight: '1.15' }}
-            >
+            <h1 className="font-display font-light text-ink mb-4 leading-tight" style={{ fontSize: '32px', letterSpacing: '-0.025em', lineHeight: '1.15' }}>
               {title}
             </h1>
             {description && (
@@ -376,11 +363,7 @@ export function ParticipantView({ projectId, title, description, questions, hasA
               <span>Anonymous</span>
             </div>
 
-            {/* Email gate */}
-            <div
-              className="p-5 mb-2"
-              style={{ backgroundColor: 'rgba(15,15,15,0.03)', border: '0.5px solid rgba(15,15,15,0.1)', borderRadius: '6px' }}
-            >
+            <div className="p-5 mb-2" style={{ backgroundColor: 'rgba(15,15,15,0.03)', border: '0.5px solid rgba(15,15,15,0.1)', borderRadius: '6px' }}>
               <label className="block text-sm font-medium text-ink mb-1">
                 Your email address
                 {hasAllowlist && <span className="ml-1.5 text-xs font-normal text-ink-faint">(required for access)</span>}
@@ -467,18 +450,18 @@ export function ParticipantView({ projectId, title, description, questions, hasA
     )
   }
 
-  // ── Question view ──────────────────────────────────────────────────────────
+  // ── Question / info block view ─────────────────────────────────────────────
 
   const response = responses.get(currentQuestion.id)
   const naActive = isNA(currentQuestion.id)
   const ready = canAdvance()
-  const showNA = (currentQuestion as any).allow_na === true
-  const isTapOnly = currentQuestion.type === 'yes_no' || currentQuestion.type === 'scale'
-
-  // Next button label
+  const showNA = !isInfoBlock && (currentQuestion as any).allow_na === true
+  const isTapOnly = !isInfoBlock && (currentQuestion.type === 'yes_no' || currentQuestion.type === 'scale')
   const isLastQuestion = currentIndex === total - 1
+
   let nextLabel = 'Next'
   if (isLastQuestion) nextLabel = 'Review'
+  else if (isInfoBlock) nextLabel = 'Continue'
   else if (isNextPart) nextLabel = 'Next part'
 
   return (
@@ -489,30 +472,46 @@ export function ParticipantView({ projectId, title, description, questions, hasA
       )}
       style={heightStyle}
     >
-      {/* Counter + part label */}
-      <div className="flex-shrink-0 flex items-center justify-between px-8 pt-6 pb-2">
-        <div className="flex items-center gap-3">
-          <span className="font-mono text-sm text-ink-muted">
-            {String(topLevelIndex + 1).padStart(2, '0')}
-            <span className="text-ink-faint">/{String(topLevelTotal).padStart(2, '0')}</span>
-          </span>
-          {partLabel && (
-            <span className="text-xs text-ink-faint font-mono">{partLabel}</span>
+      {/* Counter — hidden for info blocks */}
+      {!isInfoBlock && (
+        <div className="flex-shrink-0 flex items-center justify-between px-8 pt-6 pb-2">
+          <div className="flex items-center gap-3">
+            <span className="font-mono text-sm text-ink-muted">
+              {String(topLevelIndex + 1).padStart(2, '0')}
+              <span className="text-ink-faint">/{String(topLevelTotal).padStart(2, '0')}</span>
+            </span>
+            {partLabel && (
+              <span className="text-xs text-ink-faint font-mono">{partLabel}</span>
+            )}
+          </div>
+          {!currentQuestion.required && (
+            <span className="text-xs text-ink-faint">Optional</span>
           )}
         </div>
-        {!currentQuestion.required && (
-          <span className="text-xs text-ink-faint">Optional</span>
-        )}
-      </div>
+      )}
 
-      {isTapOnly ? (
+      {/* Info block */}
+      {isInfoBlock ? (
+        <div className="flex-1 overflow-y-auto px-8 pt-10">
+          <div className="max-w-md mx-auto pb-4">
+            {(currentQuestion as InfoBlockQuestion).heading && (
+              <h2
+                className="font-display font-light text-ink mb-4 leading-snug"
+                style={{ fontSize: '24px', letterSpacing: '-0.02em', lineHeight: '1.3' }}
+              >
+                {(currentQuestion as InfoBlockQuestion).heading}
+              </h2>
+            )}
+            <p className="text-sm text-ink-muted leading-relaxed whitespace-pre-wrap">
+              {currentQuestion.text}
+            </p>
+          </div>
+        </div>
+      ) : isTapOnly ? (
         <div className="flex-1 overflow-y-auto px-8 pt-2">
           <div className="max-w-md mx-auto w-full flex flex-col h-full">
             <div className="flex-[2] flex flex-col justify-end pb-8">
-              <h2
-                className="font-display font-light text-ink leading-snug"
-                style={{ fontSize: '24px', letterSpacing: '-0.02em', lineHeight: '1.3' }}
-              >
+              <h2 className="font-display font-light text-ink leading-snug" style={{ fontSize: '24px', letterSpacing: '-0.02em', lineHeight: '1.3' }}>
                 {currentQuestion.text}
               </h2>
             </div>
@@ -544,10 +543,7 @@ export function ParticipantView({ projectId, title, description, questions, hasA
       ) : (
         <div className="flex-1 overflow-y-auto px-8 pt-2">
           <div className="max-w-md mx-auto pb-4">
-            <h2
-              className="font-display font-light text-ink mb-7 leading-snug"
-              style={{ fontSize: '24px', letterSpacing: '-0.02em', lineHeight: '1.3' }}
-            >
+            <h2 className="font-display font-light text-ink mb-7 leading-snug" style={{ fontSize: '24px', letterSpacing: '-0.02em', lineHeight: '1.3' }}>
               {currentQuestion.text}
             </h2>
             <div className={clsx('transition-opacity duration-150', naActive && 'opacity-25 pointer-events-none')}>
@@ -592,18 +588,20 @@ export function ParticipantView({ projectId, title, description, questions, hasA
       {/* Bottom nav */}
       <div className="flex-shrink-0 bg-paper border-t border-paper-border px-8 pt-4" style={safePadding}>
         <div className="max-w-md mx-auto flex items-center gap-3 pb-1">
-          <button
-            onClick={() => setCurrentIndex(prev => Math.max(-1, prev - 1))}
-            disabled={currentIndex === 0}
-            className={clsx(
-              'flex items-center gap-1.5 px-5 py-3.5 text-sm font-medium transition-all active:scale-95',
-              'border border-paper-border text-ink-muted bg-paper',
-              currentIndex === 0 && 'opacity-30 pointer-events-none'
-            )}
-            style={{ borderRadius: '6px' }}
-          >
-            <ArrowLeft size={15} /> Back
-          </button>
+          {!isInfoBlock && (
+            <button
+              onClick={() => setCurrentIndex(prev => Math.max(-1, prev - 1))}
+              disabled={currentIndex === 0}
+              className={clsx(
+                'flex items-center gap-1.5 px-5 py-3.5 text-sm font-medium transition-all active:scale-95',
+                'border border-paper-border text-ink-muted bg-paper',
+                currentIndex === 0 && 'opacity-30 pointer-events-none'
+              )}
+              style={{ borderRadius: '6px' }}
+            >
+              <ArrowLeft size={15} /> Back
+            </button>
+          )}
           <button
             onClick={advance}
             disabled={!ready}

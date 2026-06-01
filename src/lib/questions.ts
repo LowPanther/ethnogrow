@@ -1,4 +1,4 @@
-import { QuestionType, Question, MultipleChoiceQuestion, ScaleQuestion, OpenTextQuestion, YesNoQuestion, NumericQuestion, ContactDetailsQuestion } from '@/types'
+import { QuestionType, Question, MultipleChoiceQuestion, ScaleQuestion, OpenTextQuestion, YesNoQuestion, NumericQuestion, ContactDetailsQuestion, InfoBlockQuestion } from '@/types'
 
 function generateUUID(): string {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
@@ -68,6 +68,14 @@ export const QUESTION_TYPES: {
     color: 'text-pink-600',
     bgColor: 'bg-pink-50',
   },
+  {
+    type: 'info_block',
+    label: 'Information',
+    description: 'Display text with no response required',
+    icon: '①',
+    color: 'text-ink-muted',
+    bgColor: 'bg-paper-mid',
+  },
 ]
 
 export function getQuestionTypeMeta(type: QuestionType) {
@@ -79,9 +87,10 @@ export function getQuestionTypeMeta(type: QuestionType) {
 export function createQuestion(type: QuestionType, order: number): Question {
   const base = {
     id: uuid(),
+    parent_id: null,
     type,
     text: '',
-    required: true,
+    required: false,
     allow_na: false,
     order,
   }
@@ -91,6 +100,7 @@ export function createQuestion(type: QuestionType, order: number): Question {
       return {
         ...base,
         type: 'multiple_choice',
+        required: true,
         options: ['Option 1', 'Option 2'],
         allow_multiple: false,
       } as MultipleChoiceQuestion
@@ -99,6 +109,7 @@ export function createQuestion(type: QuestionType, order: number): Question {
       return {
         ...base,
         type: 'scale',
+        required: true,
         min: 1,
         max: 5,
         min_label: 'Not at all',
@@ -109,6 +120,7 @@ export function createQuestion(type: QuestionType, order: number): Question {
       return {
         ...base,
         type: 'open_text',
+        required: true,
         placeholder: 'Type your answer here...',
         max_length: 1000,
       } as OpenTextQuestion
@@ -117,6 +129,7 @@ export function createQuestion(type: QuestionType, order: number): Question {
       return {
         ...base,
         type: 'yes_no',
+        required: true,
         yes_label: 'Yes',
         no_label: 'No',
       } as YesNoQuestion
@@ -125,6 +138,7 @@ export function createQuestion(type: QuestionType, order: number): Question {
       return {
         ...base,
         type: 'numeric',
+        required: true,
         number_label: '',
         unit: '',
         show_text_field: false,
@@ -147,6 +161,16 @@ export function createQuestion(type: QuestionType, order: number): Question {
         phone_required: false,
         require_at_least_one: false,
       } as ContactDetailsQuestion
+
+    case 'info_block':
+      return {
+        ...base,
+        type: 'info_block',
+        required: false,
+        allow_na: false,
+        heading: '',
+        text: '',
+      } as InfoBlockQuestion
   }
 }
 
@@ -154,6 +178,12 @@ export function createQuestion(type: QuestionType, order: number): Question {
 
 export function validateQuestion(q: Question): string[] {
   const errors: string[] = []
+
+  if (q.type === 'info_block') {
+    if (!q.text.trim()) errors.push('Information block body is required')
+    return errors
+  }
+
   if (!q.text.trim()) errors.push('Question text is required')
 
   if (q.type === 'multiple_choice') {
@@ -175,7 +205,7 @@ export function validateQuestion(q: Question): string[] {
 export function validateProject(title: string, questions: Question[]): string[] {
   const errors: string[] = []
   if (!title.trim()) errors.push('Project title is required')
-  if (questions.length === 0) errors.push('Add at least one question')
+  if (questions.filter(q => q.type !== 'info_block').length === 0) errors.push('Add at least one question')
   questions.forEach((q, i) => {
     const qErrors = validateQuestion(q)
     qErrors.forEach(e => errors.push(`Question ${i + 1}: ${e}`))
@@ -185,7 +215,7 @@ export function validateProject(title: string, questions: Question[]): string[] 
 
 // ─── Response quality flagging ────────────────────────────────────────────────
 
-import { ParticipantResponse, FlagReason, ScaleQuestion as SQ } from '@/types'
+import { ParticipantResponse, FlagReason } from '@/types'
 
 export function detectFlags(
   response: ParticipantResponse,
@@ -195,10 +225,7 @@ export function detectFlags(
   const { responses, completion_time_seconds } = response
 
   // 1. Completed too quickly
-  if (
-    completion_time_seconds !== undefined &&
-    completion_time_seconds < 30
-  ) {
+  if (completion_time_seconds !== undefined && completion_time_seconds < 30) {
     flags.push('completed_too_quickly')
   }
 
