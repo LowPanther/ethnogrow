@@ -438,7 +438,7 @@ export function ParticipantView({ projectId, title, description, questions, hasA
       </div>
 
       {isTapOnly ? (
-        <div className="flex-1 flex flex-col px-8 pt-2">
+        <div className="flex-1 overflow-y-auto px-8 pt-2">
           <div className="max-w-md mx-auto w-full flex flex-col h-full">
             <div className="flex-[2] flex flex-col justify-end pb-8">
               <h2 className="font-display font-light text-ink leading-snug"
