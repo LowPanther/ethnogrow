@@ -50,7 +50,6 @@ function buildOrderedList(questions: Question[]): Question[] {
 }
 
 function getTopLevel(questions: Question[]): Question[] {
-  // info_blocks do not count toward progress total
   return questions.filter(q => !q.parent_id && q.type !== 'info_block')
 }
 
@@ -80,6 +79,55 @@ function getTopLevelIndex(question: Question, allQuestions: Question[]): number 
     return topLevel.findIndex(q => q.id === question.id)
   } else {
     return topLevel.findIndex(q => q.id === question.parent_id)
+  }
+}
+
+// ─── Parent answer summary ────────────────────────────────────────────────────
+
+function getParentAnswerSummary(
+  question: Question,
+  allQuestions: Question[],
+  responses: Map<string, QuestionResponse>
+): string | null {
+  if (!question.parent_id) return null
+  const parent = allQuestions.find(q => q.id === question.parent_id)
+  if (!parent) return null
+  const resp = responses.get(parent.id)
+  if (!resp || resp.value === NA_VALUE || resp.value === undefined || resp.value === null) return null
+
+  switch (parent.type) {
+    case 'yes_no': {
+      const yesNo = parent as YesNoQuestion
+      return resp.value === true
+        ? (yesNo.yes_label || 'Yes')
+        : (yesNo.no_label || 'No')
+    }
+    case 'scale': {
+      const scale = parent as ScaleQuestion
+      const num = resp.value as number
+      if (scale.min_label && scale.max_label) {
+        return `${num} — ${num <= Math.floor((scale.min + scale.max) / 2) ? scale.min_label : scale.max_label}`
+      }
+      return `${num} out of ${scale.max}`
+    }
+    case 'multiple_choice': {
+      const vals = Array.isArray(resp.value) ? resp.value : [resp.value as string]
+      return vals.join(', ')
+    }
+    case 'open_text': {
+      const text = resp.value as string
+      return text.length > 80 ? text.slice(0, 80).trimEnd() + '…' : text
+    }
+    case 'numeric': {
+      const num = resp.value as NumericResponse
+      const numParent = parent as NumericQuestion
+      if (num?.number !== undefined && num.number !== null) {
+        return numParent.unit ? `${num.number} ${numParent.unit}` : String(num.number)
+      }
+      return null
+    }
+    default:
+      return null
   }
 }
 
@@ -119,6 +167,10 @@ export function ParticipantView({ projectId, title, description, questions, hasA
   const topLevelIndex = currentQuestion
     ? getTopLevelIndex(currentQuestion, questions)
     : 0
+
+  const parentAnswerSummary = currentQuestion
+    ? getParentAnswerSummary(currentQuestion, questions, responses)
+    : null
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -171,7 +223,6 @@ export function ParticipantView({ projectId, title, description, questions, hasA
       return emailRegex.test(participantEmail.trim())
     }
     if (!currentQuestion) return false
-    // Info blocks always allow advance
     if (isInfoBlock) return true
     if (!currentQuestion.required) return true
     const resp = responses.get(currentQuestion.id)
@@ -287,12 +338,14 @@ export function ParticipantView({ projectId, title, description, questions, hasA
 
   const heightStyle = availableHeight ? { height: `${availableHeight}px` } : {}
   const safePadding = { paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom))' }
+  // Prevent pull-to-refresh across all participant screens
+  const noOverscroll = { overscrollBehavior: 'none' as const }
 
   // ── Already submitted ──────────────────────────────────────────────────────
 
   if (alreadySubmitted) {
     return (
-      <div className="fixed inset-0 bg-paper flex flex-col items-center justify-center px-8 text-center participant-root" style={heightStyle}>
+      <div className="fixed inset-0 bg-paper flex flex-col items-center justify-center px-8 text-center participant-root" style={{ ...heightStyle, ...noOverscroll }}>
         <div className="w-12 h-12 bg-ink rounded-full flex items-center justify-center mb-6">
           <Check size={20} className="text-white" />
         </div>
@@ -311,7 +364,7 @@ export function ParticipantView({ projectId, title, description, questions, hasA
 
   if (notAllowed) {
     return (
-      <div className="fixed inset-0 bg-paper flex flex-col items-center justify-center px-8 text-center participant-root" style={heightStyle}>
+      <div className="fixed inset-0 bg-paper flex flex-col items-center justify-center px-8 text-center participant-root" style={{ ...heightStyle, ...noOverscroll }}>
         <div className="w-12 h-12 flex items-center justify-center mb-6 text-2xl">✕</div>
         <h1 className="font-display font-light text-ink mb-3" style={{ fontSize: '28px', letterSpacing: '-0.02em', lineHeight: '1.2' }}>
           Not eligible
@@ -326,7 +379,7 @@ export function ParticipantView({ projectId, title, description, questions, hasA
 
   if (submitted) {
     return (
-      <div className="fixed inset-0 bg-paper flex flex-col items-center justify-center px-8 text-center participant-root" style={heightStyle}>
+      <div className="fixed inset-0 bg-paper flex flex-col items-center justify-center px-8 text-center participant-root" style={{ ...heightStyle, ...noOverscroll }}>
         <div className="w-12 h-12 bg-ink rounded-full flex items-center justify-center mb-6">
           <Check size={20} className="text-white" />
         </div>
@@ -345,8 +398,9 @@ export function ParticipantView({ projectId, title, description, questions, hasA
 
   if (isWelcome) {
     return (
-      <div className="fixed inset-0 bg-paper flex flex-col participant-root" style={heightStyle}>
-        <div className="flex-1 flex flex-col justify-center px-8">
+      <div className="fixed inset-0 bg-paper flex flex-col participant-root" style={{ ...heightStyle, ...noOverscroll }}>
+        {/* Scrollable content area */}
+        <div className="flex-1 overflow-y-auto px-8 pt-12 pb-6">
           <div className="w-full max-w-md mx-auto">
             <p className="text-xs font-medium tracking-widest uppercase text-ink-faint mb-8">Ethnogrow</p>
             <h1 className="font-display font-light text-ink mb-4 leading-tight" style={{ fontSize: '32px', letterSpacing: '-0.025em', lineHeight: '1.15' }}>
@@ -389,8 +443,10 @@ export function ParticipantView({ projectId, title, description, questions, hasA
             </div>
           </div>
         </div>
-        <div className="px-8 py-5" style={safePadding}>
-          <div className="max-w-md mx-auto">
+
+        {/* Sticky bottom button */}
+        <div className="flex-shrink-0 bg-paper border-t border-paper-border px-8 pt-4" style={safePadding}>
+          <div className="max-w-md mx-auto pb-1">
             <button
               onClick={advance}
               disabled={!participantEmail.trim() || validating}
@@ -414,7 +470,7 @@ export function ParticipantView({ projectId, title, description, questions, hasA
 
   if (isDone) {
     return (
-      <div className="fixed inset-0 bg-paper flex flex-col participant-root" style={heightStyle}>
+      <div className="fixed inset-0 bg-paper flex flex-col participant-root" style={{ ...heightStyle, ...noOverscroll }}>
         <div className="flex-1 flex flex-col items-center justify-center px-8 text-center">
           <div className="w-12 h-12 bg-ink rounded-full flex items-center justify-center mb-6">
             <Check size={20} className="text-white" />
@@ -470,7 +526,7 @@ export function ParticipantView({ projectId, title, description, questions, hasA
         'fixed inset-0 bg-paper flex flex-col participant-root',
         slideDown && 'animate-slide-down'
       )}
-      style={heightStyle}
+      style={{ ...heightStyle, ...noOverscroll }}
     >
       {/* Counter — hidden for info blocks */}
       {!isInfoBlock && (
@@ -511,6 +567,12 @@ export function ParticipantView({ projectId, title, description, questions, hasA
         <div className="flex-1 overflow-y-auto px-8 pt-2">
           <div className="max-w-md mx-auto w-full flex flex-col h-full">
             <div className="flex-[2] flex flex-col justify-end pb-8">
+              {/* Parent answer callout for tap-only child questions */}
+              {parentAnswerSummary && (
+                <p className="text-xs text-ink-faint mb-3 font-mono">
+                  You said: <span className="text-ink-muted">{parentAnswerSummary}</span>
+                </p>
+              )}
               <h2 className="font-display font-light text-ink leading-snug" style={{ fontSize: '24px', letterSpacing: '-0.02em', lineHeight: '1.3' }}>
                 {currentQuestion.text}
               </h2>
@@ -543,6 +605,12 @@ export function ParticipantView({ projectId, title, description, questions, hasA
       ) : (
         <div className="flex-1 overflow-y-auto px-8 pt-2">
           <div className="max-w-md mx-auto pb-4">
+            {/* Parent answer callout for scrollable child questions */}
+            {parentAnswerSummary && (
+              <p className="text-xs text-ink-faint mt-4 mb-3 font-mono">
+                You said: <span className="text-ink-muted">{parentAnswerSummary}</span>
+              </p>
+            )}
             <h2 className="font-display font-light text-ink mb-7 leading-snug" style={{ fontSize: '24px', letterSpacing: '-0.02em', lineHeight: '1.3' }}>
               {currentQuestion.text}
             </h2>
