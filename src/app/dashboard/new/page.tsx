@@ -34,7 +34,6 @@ export default function NewProjectPage() {
 
   const backLabel = mode === 'choose' ? 'Dashboard' : 'New project'
 
-  // Builder has its own full-page layout with sub-header — render it standalone
   if (mode === 'build') {
     return (
       <QuestionnaireBuilder
@@ -48,7 +47,6 @@ export default function NewProjectPage() {
   return (
     <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 md:py-12">
 
-      {/* Page-level back button */}
       <button
         onClick={handleBack}
         className="inline-flex items-center gap-2 text-sm text-ink-muted hover:text-ink transition-colors mb-10 md:mb-12"
@@ -57,70 +55,72 @@ export default function NewProjectPage() {
         {backLabel}
       </button>
 
-      {mode === 'choose' && (
-        <div className="max-w-lg">
-          <h1
-            className="font-display font-light text-ink mb-2"
-            style={{ fontSize: 'clamp(24px, 5vw, 32px)', letterSpacing: '-0.02em', lineHeight: '1.2' }}
-          >
-            New project
-          </h1>
-          <p className="text-sm text-ink-muted mb-8 md:mb-10">
-            How would you like to build your questionnaire?
-          </p>
+      {/* Centred content column */}
+      <div className="max-w-2xl mx-auto">
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <button
-              onClick={() => setMode('generate')}
-              className="tint-card p-6 md:p-8 text-left"
+        {mode === 'choose' && (
+          <>
+            <h1
+              className="font-display font-light text-ink mb-2"
+              style={{ fontSize: 'clamp(24px, 5vw, 32px)', letterSpacing: '-0.02em', lineHeight: '1.2' }}
             >
-              <div
-                className="w-9 h-9 flex items-center justify-center mb-4 md:mb-5"
-                style={{ backgroundColor: 'rgba(8,155,247,0.1)', borderRadius: '4px' }}
-              >
-                <Wand2 size={17} className="text-teal" />
-              </div>
-              <h3
-                className="font-display font-normal text-ink mb-2"
-                style={{ fontSize: '16px', letterSpacing: '-0.01em' }}
-              >
-                Generate with AI
-              </h3>
-              <p className="text-sm text-ink-muted leading-relaxed">
-                Describe your study and we'll design the questions for you.
-              </p>
-            </button>
+              New project
+            </h1>
+            <p className="text-sm text-ink-muted mb-8 md:mb-10">
+              How would you like to build your questionnaire?
+            </p>
 
-            <button
-              onClick={() => setMode('build')}
-              className="tint-card p-6 md:p-8 text-left"
-            >
-              <div
-                className="w-9 h-9 flex items-center justify-center mb-4 md:mb-5"
-                style={{ backgroundColor: 'rgba(15,15,15,0.06)', borderRadius: '4px' }}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <button
+                onClick={() => setMode('generate')}
+                className="tint-card p-6 md:p-8 text-left"
               >
-                <PenLine size={17} className="text-ink-muted" />
-              </div>
-              <h3
-                className="font-display font-normal text-ink mb-2"
-                style={{ fontSize: '16px', letterSpacing: '-0.01em' }}
+                <div
+                  className="w-9 h-9 flex items-center justify-center mb-4 md:mb-5"
+                  style={{ backgroundColor: 'rgba(8,155,247,0.1)', borderRadius: '4px' }}
+                >
+                  <Wand2 size={17} className="text-teal" />
+                </div>
+                <h3
+                  className="font-display font-normal text-ink mb-2"
+                  style={{ fontSize: '16px', letterSpacing: '-0.01em' }}
+                >
+                  Generate with AI
+                </h3>
+                <p className="text-sm text-ink-muted leading-relaxed">
+                  Describe your study and we'll design the questions for you.
+                </p>
+              </button>
+
+              <button
+                onClick={() => setMode('build')}
+                className="tint-card p-6 md:p-8 text-left"
               >
-                Build from scratch
-              </h3>
-              <p className="text-sm text-ink-muted leading-relaxed">
-                Start with a blank questionnaire and add your own questions.
-              </p>
-            </button>
-          </div>
-        </div>
-      )}
+                <div
+                  className="w-9 h-9 flex items-center justify-center mb-4 md:mb-5"
+                  style={{ backgroundColor: 'rgba(15,15,15,0.06)', borderRadius: '4px' }}
+                >
+                  <PenLine size={17} className="text-ink-muted" />
+                </div>
+                <h3
+                  className="font-display font-normal text-ink mb-2"
+                  style={{ fontSize: '16px', letterSpacing: '-0.01em' }}
+                >
+                  Build from scratch
+                </h3>
+                <p className="text-sm text-ink-muted leading-relaxed">
+                  Start with a blank questionnaire and add your own questions.
+                </p>
+              </button>
+            </div>
+          </>
+        )}
 
-      {mode === 'generate' && (
-        <QuestionGenerator
-          onAccept={handleGeneratorAccept}
-        />
-      )}
+        {mode === 'generate' && (
+          <QuestionGenerator onAccept={handleGeneratorAccept} />
+        )}
 
+      </div>
     </div>
   )
 }

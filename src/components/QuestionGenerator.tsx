@@ -26,7 +26,6 @@ interface QuestionGeneratorProps {
 
 type Step = 'brief' | 'review'
 
-// Safe UUID that works over HTTP (no crypto.randomUUID)
 function generateUUID(): string {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
     const r = Math.random() * 16 | 0
@@ -97,11 +96,11 @@ export function QuestionGenerator({ onAccept }: QuestionGeneratorProps) {
     onAccept(generated.title, generated.description, selectedQuestions)
   }
 
-  // ── Brief form ─────────────────────────────────────────────────────────────
+  // ── Brief step ──────────────────────────────────────────────────────────────
 
   if (step === 'brief') {
     return (
-      <div className="max-w-lg">
+      <div>
         <h1
           className="font-display font-light text-ink mb-2"
           style={{ fontSize: 'clamp(24px, 5vw, 32px)', letterSpacing: '-0.02em', lineHeight: '1.2' }}
@@ -219,14 +218,14 @@ export function QuestionGenerator({ onAccept }: QuestionGeneratorProps) {
     )
   }
 
-  // ── Review step ────────────────────────────────────────────────────────────
+  // ── Review step ─────────────────────────────────────────────────────────────
 
   if (!generated) return null
 
   const selectedCount = selectedIndices.size
 
   return (
-    <div className="max-w-lg">
+    <div>
       <h1
         className="font-display font-light text-ink mb-2"
         style={{ fontSize: 'clamp(22px, 4vw, 28px)', letterSpacing: '-0.02em', lineHeight: '1.2' }}
@@ -328,7 +327,6 @@ export function QuestionGenerator({ onAccept }: QuestionGeneratorProps) {
         })}
       </div>
 
-      {/* Footer actions */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-6 border-t border-paper-border">
         <div className="flex items-center gap-3">
           <button onClick={() => setStep('brief')} className="btn-ghost text-sm">
@@ -357,7 +355,7 @@ export function QuestionGenerator({ onAccept }: QuestionGeneratorProps) {
   )
 }
 
-// ─── Convert generated question to Question type ──────────────────────────────
+// ─── Convert generated question to Question type ───────────────────────────────
 
 function buildQuestion(q: GeneratedQuestion, order: number): Question {
   const base = {
