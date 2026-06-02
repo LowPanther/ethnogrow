@@ -179,15 +179,16 @@ export function ParticipantView({ projectId, title, description, questions, hasA
   }, [storageKey])
 
   useEffect(() => {
-    function update() {
+    // Set height once on mount only — do not update on keyboard open/close
+    // Keyboard resize is handled by the input's scroll-into-view behaviour natively
+    function setInitialHeight() {
       setAvailableHeight(window.visualViewport?.height ?? window.innerHeight)
     }
-    update()
-    window.visualViewport?.addEventListener('resize', update)
-    window.addEventListener('resize', update)
+    setInitialHeight()
+    // Only listen to window resize (orientation change), not visualViewport resize (keyboard)
+    window.addEventListener('resize', setInitialHeight)
     return () => {
-      window.visualViewport?.removeEventListener('resize', update)
-      window.removeEventListener('resize', update)
+      window.removeEventListener('resize', setInitialHeight)
     }
   }, [])
 
@@ -444,8 +445,15 @@ export function ParticipantView({ projectId, title, description, questions, hasA
           </div>
         </div>
 
-        {/* Sticky bottom button */}
-        <div className="flex-shrink-0 bg-paper border-t border-paper-border px-8 pt-4" style={safePadding}>
+        {/* Sticky bottom button — fixed to visual viewport so keyboard doesn't push content */}
+        <div
+          className="flex-shrink-0 bg-paper border-t border-paper-border px-8 pt-4"
+          style={{
+            ...safePadding,
+            position: 'sticky',
+            bottom: 0,
+          }}
+        >
           <div className="max-w-md mx-auto pb-1">
             <button
               onClick={advance}
