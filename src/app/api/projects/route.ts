@@ -10,7 +10,7 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: 'project_id required' }, { status: 400 })
     }
 
-    const supabase = createServerSideClient()
+    const supabase = await createServerSideClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
@@ -57,7 +57,7 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: 'project_id required' }, { status: 400 })
     }
 
-    const supabase = createServerSideClient()
+    const supabase = await createServerSideClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
