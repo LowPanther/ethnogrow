@@ -15,7 +15,8 @@ export async function generateMetadata({ params }: Props) {
 }
 
 export default async function ProjectPage({ params }: Props) {
-  const supabase = createServerSideClient()
+  const { id } = await params
+  const supabase = await createServerSideClient()
 
   const { data: project, error } = await supabase
     .from('projects')
