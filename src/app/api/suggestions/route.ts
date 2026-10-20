@@ -9,7 +9,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'project_id and report_id required' }, { status: 400 })
     }
 
-    const supabase = createServerSideClient()
+    const supabase = await createServerSideClient()
 
     // Auth check
     const { data: { user } } = await supabase.auth.getUser()
@@ -148,7 +148,7 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: 'suggestion_id and status required' }, { status: 400 })
     }
 
-    const supabase = createServerSideClient()
+    const supabase = await createServerSideClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
