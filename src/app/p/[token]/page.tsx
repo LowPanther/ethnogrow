@@ -4,27 +4,29 @@ import { ParticipantView } from '@/components/ParticipantView'
 import { Question } from '@/types'
 
 interface Props {
-  params: { token: string }
+  params: Promise<{ token: string }>
 }
 
 export async function generateMetadata({ params }: Props) {
+  const { token } = await params
   const supabase = createServiceRoleClient()
   const { data } = await supabase
     .from('projects')
     .select('title')
-    .eq('participant_token', params.token)
+    .eq('participant_token', token)
     .eq('status', 'active')
     .single()
   return { title: data?.title || 'Research questionnaire' }
 }
 
 export default async function ParticipantPage({ params }: Props) {
+  const { token } = await params
   const supabase = createServiceRoleClient()
 
   const { data: project, error } = await supabase
     .from('projects')
     .select('id, title, description, questions, status, allowed_emails')
-    .eq('participant_token', params.token)
+    .eq('participant_token', token)
     .single()
 
   if (error || !project) notFound()
@@ -52,7 +54,7 @@ export default async function ParticipantPage({ params }: Props) {
   return (
     <ParticipantView
       projectId={project.id}
-      participantToken={params.token}
+      participantToken={token}
       title={project.title}
       description={project.description}
       questions={project.questions as Question[]}
