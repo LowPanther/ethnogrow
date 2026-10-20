@@ -16,9 +16,9 @@ function emailMatchesAllowlist(email: string, allowlist: string[]): boolean {
 
 export async function POST(req: NextRequest) {
   try {
-    const { project_id, email } = await req.json()
+    const { project_id, participant_token, email } = await req.json()
 
-    if (!project_id || !email) {
+    if (!project_id || !participant_token || !email) {
       return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
     }
 
@@ -27,6 +27,7 @@ export async function POST(req: NextRequest) {
       .from('projects')
       .select('allowed_emails, status')
       .eq('id', project_id)
+      .eq('participant_token', participant_token)
       .single()
 
     if (error || !project) {
