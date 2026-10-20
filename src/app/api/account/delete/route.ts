@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server'
 
 export async function POST() {
   try {
-    const supabase = createServerSideClient()
+    const supabase = await createServerSideClient()
     const { data: { user } } = await supabase.auth.getUser()
 
     if (!user) {
