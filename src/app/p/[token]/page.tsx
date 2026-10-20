@@ -1,4 +1,4 @@
-import { createServerSideClient } from '@/lib/supabase-server'
+import { createServiceRoleClient } from '@/lib/supabase-server'
 import { notFound } from 'next/navigation'
 import { ParticipantView } from '@/components/ParticipantView'
 import { Question } from '@/types'
@@ -8,7 +8,7 @@ interface Props {
 }
 
 export async function generateMetadata({ params }: Props) {
-  const supabase = createServerSideClient()
+  const supabase = createServiceRoleClient()
   const { data } = await supabase
     .from('projects')
     .select('title')
@@ -19,7 +19,7 @@ export async function generateMetadata({ params }: Props) {
 }
 
 export default async function ParticipantPage({ params }: Props) {
-  const supabase = createServerSideClient()
+  const supabase = createServiceRoleClient()
 
   const { data: project, error } = await supabase
     .from('projects')
