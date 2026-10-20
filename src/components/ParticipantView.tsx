@@ -266,7 +266,7 @@ export function ParticipantView({ projectId, participantToken, title, descriptio
         const res = await fetch('/api/validate-participant', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ project_id: projectId, email: participantEmail.trim() }),
+          body: JSON.stringify({ project_id: projectId, participant_token: participantToken, email: participantEmail.trim() }),
         })
         const data = await res.json()
         if (!data.allowed) {
