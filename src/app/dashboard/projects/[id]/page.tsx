@@ -4,12 +4,13 @@ import { Project } from '@/types'
 import ProjectDetailClient from './ProjectDetailClient'
 
 interface Props {
-  params: { id: string }
+  params: Promise<{ id: string }>
 }
 
 export async function generateMetadata({ params }: Props) {
-  const supabase = createServerSideClient()
-  const { data } = await supabase.from('projects').select('title').eq('id', params.id).single()
+  const { id } = await params
+  const supabase = await createServerSideClient()
+  const { data } = await supabase.from('projects').select('title').eq('id', id).single()
   return { title: data?.title || 'Project' }
 }
 
@@ -19,7 +20,7 @@ export default async function ProjectPage({ params }: Props) {
   const { data: project, error } = await supabase
     .from('projects')
     .select('*')
-    .eq('id', params.id)
+    .eq('id', id)
     .single()
 
   if (error || !project) notFound()
@@ -27,19 +28,19 @@ export default async function ProjectPage({ params }: Props) {
   const { data: responses } = await supabase
     .from('responses')
     .select('*')
-    .eq('project_id', params.id)
+    .eq('project_id', id)
     .order('submitted_at', { ascending: false })
 
   const { data: existingReport } = await supabase
     .from('ai_reports')
     .select('*')
-    .eq('project_id', params.id)
+    .eq('project_id', id)
     .single()
 
   const { data: existingSuggestions } = await supabase
     .from('ai_suggestions')
     .select('*')
-    .eq('project_id', params.id)
+    .eq('project_id', id)
     .eq('status', 'pending')
     .order('created_at', { ascending: true })
 
