@@ -7,7 +7,7 @@ export async function GET(request: NextRequest) {
   const type = searchParams.get('type')
 
   if (code) {
-    const supabase = createServerSideClient()
+    const supabase = await createServerSideClient()
     await supabase.auth.exchangeCodeForSession(code)
 
     // If this is a password recovery, send to reset page
