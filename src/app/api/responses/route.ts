@@ -32,10 +32,10 @@ export async function POST(req: NextRequest) {
       responses,
       completion_time_seconds,
       email,
-      email_hash,
+      participant_token,
     } = body
 
-    if (!project_id || !session_id || !responses) {
+    if (!project_id || !session_id || !participant_token || !Array.isArray(responses)) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
@@ -43,6 +43,7 @@ export async function POST(req: NextRequest) {
     const { data: project, error: projectError } = await supabase
       .from('projects')
       .select('questions, status, allowed_emails')
+      .eq('participant_token', participant_token)
       .eq('id', project_id)
       .single()
 
@@ -55,7 +56,10 @@ export async function POST(req: NextRequest) {
     }
 
     // 2. Allowlist check — second gate (server-side, cannot be bypassed)
-    if (project.allowed_emails && project.allowed_emails.length > 0 && email) {
+    if (project.allowed_emails && project.allowed_emails.length > 0) {
+      if (typeof email !== 'string' || !email.trim()) {
+        return NextResponse.json({ error: 'Email is required for this questionnaire' }, { status: 403 })
+      }
       const allowed = emailMatchesAllowlist(email, project.allowed_emails)
       if (!allowed) {
         return NextResponse.json({
@@ -66,9 +70,11 @@ export async function POST(req: NextRequest) {
     }
 
     // 3. Compute hash server-side if plain email provided
-    let finalHash: string | undefined = email_hash
-    if (email) {
+    let finalHash: string | undefined
+    if (typeof email === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
       finalHash = await hashEmail(email)
+    } else {
+      return NextResponse.json({ error: 'A valid email is required' }, { status: 400 })
     }
 
     // 4. Duplicate check
