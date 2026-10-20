@@ -4,7 +4,7 @@ import DashboardClient from './DashboardClient'
 export const metadata = { title: 'Dashboard — Ethnogrow' }
 
 export default async function DashboardPage() {
-  const supabase = createServerSideClient()
+  const supabase = await createServerSideClient()
   const { data: { user } } = await supabase.auth.getUser()
 
   const { data: projects } = await supabase
