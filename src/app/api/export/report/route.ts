@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'projectId is required' }, { status: 400 })
     }
 
-    const supabase = createServerSideClient()
+    const supabase = await createServerSideClient()
 
     // Auth check
     const { data: { user }, error: authError } = await supabase.auth.getUser()
