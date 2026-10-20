@@ -52,6 +52,7 @@ export default async function ParticipantPage({ params }: Props) {
   return (
     <ParticipantView
       projectId={project.id}
+      participantToken={params.token}
       title={project.title}
       description={project.description}
       questions={project.questions as Question[]}
