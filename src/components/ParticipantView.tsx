@@ -13,6 +13,7 @@ import { ArrowRight, ArrowLeft, Check } from 'lucide-react'
 
 interface ParticipantViewProps {
   projectId: string
+  participantToken: string
   title: string
   description?: string
   questions: Question[]
@@ -131,7 +132,7 @@ function getParentAnswerSummary(
   }
 }
 
-export function ParticipantView({ projectId, title, description, questions, hasAllowlist }: ParticipantViewProps) {
+export function ParticipantView({ projectId, participantToken, title, description, questions, hasAllowlist }: ParticipantViewProps) {
   const orderedQuestions = buildOrderedList(questions)
   const topLevelQuestions = getTopLevel(questions)
 
@@ -308,6 +309,7 @@ export function ParticipantView({ projectId, title, description, questions, hasA
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           project_id: projectId,
+          participant_token: participantToken,
           session_id: sessionId,
           responses: Array.from(responses.values()),
           completion_time_seconds: completionTime,
