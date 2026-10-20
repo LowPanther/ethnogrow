@@ -1,4 +1,4 @@
-import { createServerSideClient } from '@/lib/supabase-server'
+import { createServerSideClient, createServiceRoleClient } from '@/lib/supabase-server'
 import DashboardClient from './DashboardClient'
 
 export const metadata = { title: 'Dashboard — Ethnogrow' }
@@ -12,16 +12,17 @@ export default async function DashboardPage() {
     .select('*, responses(count)')
     .order('updated_at', { ascending: false })
 
-  let { data: usage } = await supabase
+  const usageClient = createServiceRoleClient()
+  let { data: usage } = await usageClient
     .from('researcher_usage')
     .select('*')
-    .eq('user_id', user!.id)
+    .eq('researcher_id', user!.id)
     .single()
 
   if (!usage) {
-    const { data: newUsage } = await supabase
+    const { data: newUsage } = await usageClient
       .from('researcher_usage')
-      .insert({ user_id: user!.id })
+      .insert({ researcher_id: user!.id })
       .select()
       .single()
     usage = newUsage
