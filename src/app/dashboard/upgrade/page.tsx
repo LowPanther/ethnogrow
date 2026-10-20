@@ -48,7 +48,7 @@ const PLANS = [
 ]
 
 export default async function UpgradePage() {
-  const supabase = createServerSideClient()
+  const supabase = await createServerSideClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
