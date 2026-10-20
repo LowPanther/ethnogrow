@@ -77,24 +77,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'A valid email is required' }, { status: 400 })
     }
 
-    // 4. Duplicate check
-    if (finalHash) {
-      const { data: existing } = await supabase
-        .from('response_verifications')
-        .select('id')
-        .eq('project_id', project_id)
-        .eq('email_hash', finalHash)
-        .single()
-
-      if (existing) {
-        return NextResponse.json(
-          { error: 'duplicate', message: 'You have already submitted a response to this questionnaire.' },
-          { status: 409 }
-        )
-      }
-    }
-
-    // 5. Detect quality flags
+    // Flagging is still calculated in the application; insertion and de-duplication
+    // must happen atomically in the database to avoid concurrent double-submissions.
     const draftResponse = {
       id: '',
       project_id,
@@ -103,34 +87,31 @@ export async function POST(req: NextRequest) {
       submitted_at: new Date().toISOString(),
       completion_time_seconds,
     }
-
     const flagReasons = detectFlags(draftResponse, project.questions as Question[])
-    const flagStatus = flagReasons.length > 0 ? 'flagged' : null
 
-    // 6. Insert response
-    const { data: inserted, error: insertError } = await supabase
-      .from('responses')
-      .insert({
-        project_id,
-        session_id,
-        responses,
-        completion_time_seconds,
-        flag_status: flagStatus,
-        flag_reasons: flagReasons.length > 0 ? flagReasons : null,
-      })
-      .select('id')
-      .single()
+    const { data: insertedId, error: submitError } = await supabase.rpc(
+      'submit_survey_response_atomic',
+      {
+        p_project_id: project_id,
+        p_email_hash: finalHash,
+        p_session_id: session_id,
+        p_responses: responses,
+        p_completion_time_seconds: completion_time_seconds ?? null,
+        p_flag_reasons: flagReasons.length ? flagReasons : null,
+      }
+    )
 
-    if (insertError) throw insertError
-
-    // 7. Store email hash for deduplication
-    if (finalHash) {
-      await supabase
-        .from('response_verifications')
-        .insert({ project_id, email_hash: finalHash })
+    if (submitError) {
+      if (submitError.code === '23505' || submitError.message.includes('already_submitted')) {
+        return NextResponse.json(
+          { error: 'duplicate', message: 'You have already submitted a response to this questionnaire.' },
+          { status: 409 }
+        )
+      }
+      throw submitError
     }
 
-    return NextResponse.json({ success: true, id: inserted.id })
+    return NextResponse.json({ success: true, id: insertedId })
   } catch (err) {
     console.error('Response submission error:', err)
     return NextResponse.json({ error: 'Failed to submit response' }, { status: 500 })
