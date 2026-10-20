@@ -1,4 +1,4 @@
-import { createServerSideClient } from '@/lib/supabase-server'
+import { createServiceRoleClient } from '@/lib/supabase-server'
 import { NextRequest, NextResponse } from 'next/server'
 
 function emailMatchesAllowlist(email: string, allowlist: string[]): boolean {
@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
     }
 
-    const supabase = createServerSideClient()
+    const supabase = createServiceRoleClient()
     const { data: project, error } = await supabase
       .from('projects')
       .select('allowed_emails, status')
