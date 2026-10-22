@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerSideClient } from '@/lib/supabase-server'
+import { createServerSideClient, createServiceRoleClient } from '@/lib/supabase-server'
 import { Question, ParticipantResponse, QuestionResponse } from '@/types'
 
 const PLAN_REPORT_LIMITS: Record<string, number> = {
@@ -45,16 +45,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'No responses to analyse' }, { status: 400 })
     }
 
+    // Usage accounting is server-managed only. Authentication and ownership
+    // have already been validated above.
+    const usageClient = createServiceRoleClient()
+
     // ── Fetch and validate usage ──────────────────────────────
 
-    let { data: usage } = await supabase
+    let { data: usage } = await usageClient
       .from('researcher_usage')
       .select('*')
       .eq('researcher_id', user.id)
       .single()
 
     if (!usage) {
-      const { data: newUsage } = await supabase
+      const { data: newUsage } = await usageClient
         .from('researcher_usage')
         .insert({ researcher_id: user.id })
         .select()
@@ -76,7 +80,7 @@ export async function POST(req: NextRequest) {
 
     if (isNewMonth) {
       // Reset the counter
-      await supabase
+      await usageClient
         .from('researcher_usage')
         .update({
           reports_this_month: 0,
@@ -181,7 +185,7 @@ Rules for your writing:
 
     // ── Increment report count ────────────────────────────────
 
-    await supabase
+    await usageClient
       .from('researcher_usage')
       .update({
         reports_this_month: reportsThisMonth + 1,
